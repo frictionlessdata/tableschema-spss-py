@@ -19,7 +19,9 @@ def read(*segments):
 PACKAGE = 'tableschema_spss'
 NAME = PACKAGE.replace('_', '-')
 INSTALL_REQUIRES = [
-    'six>=1.9,<2.0'
+    'six>=1.9,<2.0',
+    'tableschema',
+    'savReaderWriter'
 ]
 TESTS_REQUIRE = [
     'pylama',

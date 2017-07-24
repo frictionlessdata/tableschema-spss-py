@@ -1,0 +1,15 @@
+{
+    "fields": [
+        {
+            "name": "person_id",
+            "type": "integer",
+            "constraints": {
+                "required": true
+            }
+        },
+        {
+            "name": "name",
+            "type": "string"
+        }
+    ]
+}
