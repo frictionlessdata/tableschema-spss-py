@@ -38,10 +38,6 @@ class Storage(object):
     def __repr__(self):
         return 'Storage <{}>'.format(self.__base_path)
 
-    def __getitem__(self, key):
-        pass
-        # return self.__buckets[key]
-
     def __list_bucket_filenames(self):
         '''Find .sav files at base_path and return bucket filenames'''
         return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
@@ -52,14 +48,14 @@ class Storage(object):
         return self.__buckets
 
     def create(self, bucket, descriptor, force=False):
-        """Create bucket with schema.
+        """Create bucket with descriptor.
 
         Parameters
         ----------
         bucket: str/list
             File name or list of file names.
-        schema: dict/list
-            TableSchema schema or list of schemas.
+        descriptor: dict/list
+            TableSchema descriptor or list of descriptors.
         force: bool
             Will force creation of a new file, overwriting existing file with same name.
 
