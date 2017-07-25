@@ -27,22 +27,29 @@ class Storage(object):
     """
 
     def __init__(self, base_path):
-        self.__buckets = collections.OrderedDict()
         self.__descriptors = {}
         if not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
             raise RuntimeError(message)
         self.__base_path = base_path
+        # List all .sav and .zsav files at __base_path
+        self.__buckets = self.__list_bucket_filenames()
 
     def __repr__(self):
         return 'Storage <{}>'.format(self.__base_path)
 
     def __getitem__(self, key):
-        return self.__buckets[key]
+        pass
+        # return self.__buckets[key]
+
+    def __list_bucket_filenames(self):
+        '''Find .sav files at base_path and return bucket filenames'''
+        return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
 
     @property
     def buckets(self):
-        return list(self.__buckets.keys())
+        '''List all .sav and .zsav files at __base_path'''
+        return self.__buckets
 
     def create(self, bucket, descriptor, force=False):
         """Create bucket with schema.
@@ -102,11 +109,26 @@ class Storage(object):
                                                ioUtf8=True)
             writer.close()
 
+        self.__buckets = self.__list_bucket_filenames()
+
     def delete(self, bucket=None, ignore=False):
         pass
 
     def describe(self, bucket, descriptor=None):
-        pass
+        # Set descriptor
+        if descriptor is not None:
+            self.__descriptors[bucket] = descriptor
+
+        # Get descriptor
+        else:
+            descriptor = self.__descriptors.get(bucket)
+            if descriptor is None:
+                filename = mappers.bucket_to_filename(bucket)
+                file_path = os.path.join(self.__base_path, filename)
+                with savReaderWriter.SavHeaderReader(file_path) as header:
+                    descriptor = mappers.spss_header_to_descriptor(header.all())
+
+        return descriptor
 
     def iter(self, bucket):
         pass

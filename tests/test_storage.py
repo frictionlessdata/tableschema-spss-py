@@ -17,21 +17,6 @@ import logging
 log = logging.getLogger(__name__)
 
 
-# def test_storage():
-#     # Get resources
-#     # articles_descriptor = json.load(
-#     #     io.open('data/articles.json', encoding='utf-8'))
-#     # comments_descriptor = json.load(
-#     #     io.open('data/comments.json', encoding='utf-8'))
-#     # articles_rows = Stream('data/articles.csv', headers=1).open().read()
-#     # comments_rows = Stream('data/comments.csv', headers=1).open().read()
-
-#     # Storage
-#     storage = Storage(base_path='data')
-
-#     print(storage)
-
-
 class TestBasePath(unittest.TestCase):
 
     def test_base_path_exists(self):
@@ -108,3 +93,14 @@ class TestStorageCreate(unittest.TestCase):
             self.assertEqual(metadata.formats, {'name': 'A12', 'person_id': 'F8.2'})
             self.assertEqual(metadata.varNames, ['person_id', 'name'])
             self.assertEqual(metadata.varTypes, {'name': 12, 'person_id': 0})
+
+
+class TestStorageDescribe(unittest.TestCase):
+
+    TEST_BASE_PATH = 'data'
+
+    def test_describe(self):
+        '''Return the expected schema descriptor.'''
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        schema = storage.describe('Employee data.sav')
+        print(schema)
