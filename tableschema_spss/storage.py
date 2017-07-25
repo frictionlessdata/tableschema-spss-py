@@ -140,7 +140,6 @@ class Storage(object):
         # Yield rows
         with savReaderWriter.SavReader(file_path) as reader:
             for r in reader:
-                # print(r)
                 row = []
                 for i, field in enumerate(schema.fields):
                     value = r[i]
@@ -148,11 +147,10 @@ class Storage(object):
                     if field.type == 'integer':
                         value = int(float(value))
                     row.append(value)
-                # print(schema.cast_row(row))
                 yield schema.cast_row(row)
 
     def read(self, bucket):
-        pass
+        return list(self.iter(bucket))
 
     def write(self, bucket, rows):
         pass

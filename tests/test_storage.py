@@ -110,7 +110,7 @@ class TestStorageDescribe(unittest.TestCase):
         self.assertEqual(expected_schema, schema)
 
 
-class TestStorageIter(unittest.TestCase):
+class TestStorageIter_Read(unittest.TestCase):
 
     TEST_BASE_PATH = 'data'
     EXPECTED_DATA = [
@@ -139,6 +139,14 @@ class TestStorageIter(unittest.TestCase):
     def test_iter(self):
         storage = Storage(base_path=self.TEST_BASE_PATH)
         for i, row in enumerate(storage.iter('Employee data.sav')):
+            # Test the first 10 rows against the expected data.
+            self.assertEqual(self.EXPECTED_DATA[i], row)
+            if i == 9:
+                break
+
+    def test_read(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        for i, row in enumerate(storage.read('Employee data.sav')):
             # Test the first 10 rows against the expected data.
             self.assertEqual(self.EXPECTED_DATA[i], row)
             if i == 9:
