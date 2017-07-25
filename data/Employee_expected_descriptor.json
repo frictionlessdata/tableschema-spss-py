@@ -1,0 +1,43 @@
+{
+    "fields": [{
+        "type": "integer",
+        "name": "id",
+        "title": "Employee Code"
+    }, {
+        "type": "string",
+        "name": "gender",
+        "title": "Gender"
+    }, {
+        "type": "date",
+        "name": "bdate",
+        "title": "Date of Birth"
+    }, {
+        "type": "integer",
+        "name": "educ",
+        "title": "Educational Level (years)"
+    }, {
+        "type": "integer",
+        "name": "jobcat",
+        "title": "Employment Category"
+    }, {
+        "type": "number",
+        "name": "salary",
+        "title": "Current Salary"
+    }, {
+        "type": "number",
+        "name": "salbegin",
+        "title": "Beginning Salary"
+    }, {
+        "type": "integer",
+        "name": "jobtime",
+        "title": "Months since Hire"
+    }, {
+        "type": "integer",
+        "name": "prevexp",
+        "title": "Previous Experience (months)"
+    }, {
+        "type": "integer",
+        "name": "minority",
+        "title": "Minority Classification"
+    }]
+}

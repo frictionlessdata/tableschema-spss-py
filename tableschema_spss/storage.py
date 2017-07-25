@@ -131,7 +131,25 @@ class Storage(object):
         return descriptor
 
     def iter(self, bucket):
-        pass
+        # Get response
+        descriptor = self.describe(bucket)
+        schema = tableschema.Schema(descriptor)
+        filename = mappers.bucket_to_filename(bucket)
+        file_path = os.path.join(self.__base_path, filename)
+
+        # Yield rows
+        with savReaderWriter.SavReader(file_path) as reader:
+            for r in reader:
+                # print(r)
+                row = []
+                for i, field in enumerate(schema.fields):
+                    value = r[i]
+                    # Fix decimals that should be integers
+                    if field.type == 'integer':
+                        value = int(float(value))
+                    row.append(value)
+                # print(schema.cast_row(row))
+                yield schema.cast_row(row)
 
     def read(self, bucket):
         pass
