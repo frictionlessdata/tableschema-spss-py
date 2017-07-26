@@ -5,7 +5,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
-import collections
 
 import six
 import tableschema
@@ -121,7 +120,7 @@ class Storage(object):
             if descriptor is None:
                 filename = mappers.bucket_to_filename(bucket)
                 file_path = os.path.join(self.__base_path, filename)
-                with savReaderWriter.SavHeaderReader(file_path) as header:
+                with savReaderWriter.SavHeaderReader(file_path, ioUtf8=True) as header:
                     descriptor = mappers.spss_header_to_descriptor(header.all())
 
         return descriptor
@@ -134,7 +133,7 @@ class Storage(object):
         file_path = os.path.join(self.__base_path, filename)
 
         # Yield rows
-        with savReaderWriter.SavReader(file_path) as reader:
+        with savReaderWriter.SavReader(file_path, ioUtf8=True, rawMode=False) as reader:
             for r in reader:
                 row = []
                 for i, field in enumerate(schema.fields):
@@ -142,6 +141,14 @@ class Storage(object):
                     # Fix decimals that should be integers
                     if field.type == 'integer':
                         value = int(float(value))
+                    # In Py3, date is returned as 'seconds since Gregorian epoch',
+                    # transform it to a string date.
+                    if field.type == 'date' and type(value) is float:
+                        value = reader.spss2strDate(value, "%Y-%m-%d", None)
+                    elif field.type == 'datetime' and type(value) is float:
+                        value = reader.spss2strDate(value, "%Y-%m-%d %H:%M:%S", None)
+                    elif field.type == 'time' and type(value) is float:
+                        value = reader.spss2strDate(value, "%H:%M:%S.%f", None)
                     row.append(value)
                 yield schema.cast_row(row)
 
