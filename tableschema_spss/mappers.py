@@ -13,42 +13,64 @@ def bucket_to_filename(bucket):
     return bucket
 
 
-def descriptor_to_varnames_and_vartypes(descriptor):
-    TYPE_MAPPING = {
-        'string': 1,
-        'number': 0,
-        'integer': 0,
-        'boolean': 0,
-        'array': 1,
-        'object': 1,
-        'date': 0,
-        'time': 0,
-        'datetime': 0,
-        'year': 0,
-        'yearmonth': 0,
-        'geopoint': 0,
-        'geojson': 0,
-        'duration': 0,
-        'any': 1,
-    }
+def descriptor_to_savreaderwriter_args(descriptor):
+    '''Return a dict of method args that can be used by savReaderWriter.SavWriter(),
+    derived from the passed `descriptor`.
+    '''
 
     schema = tableschema.Schema(descriptor)
 
-    var_names = [f['name'] for f in descriptor['fields']]
-    var_types = {n: TYPE_MAPPING[schema.get_field(n).type] for n in var_names}
+    def get_format_for_name(name):
+        return schema.get_field(name).descriptor.get('spss:format')
 
-    return var_names, var_types
+    def get_spss_type_for_name(name):
+        '''Return spss number type for `name`.
+
+        First we try to get the spss format (A10, F8.2, etc), and derive the spss type
+        from that.
+
+        If there's not spss format defined, we see if the type is a number and return the
+        appropriate type.
+
+        All else fails, we return a string type of width 1 (the default string format is
+        A1).
+        '''
+        spss_format = get_format_for_name(name)
+        if spss_format:
+            string_pattern = re.compile("(?P<printFormat>A(HEX)?)(?P<printWid>\d+)",
+                                        re.IGNORECASE)
+            is_string = string_pattern.match(spss_format)
+            if is_string:
+                # Return the 'width' discovered from the passed `format`.
+                return int(is_string.group('printWid'))
+            else:
+                return 0
+        else:
+            descriptor_type = schema.get_field(name).type
+            if descriptor_type == 'integer' or descriptor_type == 'number':
+                return 0
+
+        raise ValueError('Field "{}" requires a "spss:format" property.'.format(name))
+
+    var_names = [f['name'] for f in descriptor['fields']]
+    var_types = {n: get_spss_type_for_name(n) for n in var_names}
+    formats = {n: get_format_for_name(n) for n in var_names if get_format_for_name(n)}
+    return {'varNames': var_names, 'varTypes': var_types, 'formats': formats}
 
 
 def spss_header_to_descriptor(header):
-    '''Return a Schema descriptor from the passed SPSS header.'''
+    '''Return a Schema descriptor from the passed SPSS header.
 
+    Includes a custom `spss:format` property which defines the SPSS format used for this
+    field type.
+    '''
     fields = []
     for var in header.varNames:
         field = {
             'name': var,
             'type': spss_type_format_to_schema_type(header.formats[var]),
-            'title': header.varLabels[var]
+            'title': header.varLabels[var],
+            'spss:format': header.formats[var]
         }
         fields.append(field)
     return {'fields': fields}

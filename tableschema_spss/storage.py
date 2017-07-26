@@ -97,11 +97,8 @@ class Storage(object):
                 raise RuntimeError(message)
 
             # map descriptor to sav header format so we can use the method below.
-            var_names, var_types = mappers.descriptor_to_varnames_and_vartypes(descriptor)
-            writer = savReaderWriter.SavWriter(file_path,
-                                               var_names,
-                                               var_types,
-                                               ioUtf8=True)
+            args = mappers.descriptor_to_savreaderwriter_args(descriptor)
+            writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **args)
             writer.close()
 
         self.__buckets = self.__list_bucket_filenames()

@@ -42,7 +42,7 @@ class TestBasePath(unittest.TestCase):
 class TestStorageCreate(unittest.TestCase):
 
     TEST_BASE_PATH = 'data'
-    TEST_FILE_NAME = 'simple.sav'
+    TEST_FILE_NAME = 'test_simple.sav'
     TEST_FILE_PATH = os.path.join(TEST_BASE_PATH, TEST_FILE_NAME)
 
     def tearDown(self):
@@ -90,11 +90,13 @@ class TestStorageCreate(unittest.TestCase):
 
         storage.create(self.TEST_FILE_NAME, simple_descriptor)
 
-        with savReaderWriter.SavHeaderReader(self.TEST_FILE_PATH) as header:
+        with savReaderWriter.SavHeaderReader(self.TEST_FILE_PATH, ioUtf8=True) as header:
             metadata = header.all()
-            # self.assertEqual(metadata.formats, {'name': 'A12', 'person_id': 'F8.2'})
-            # self.assertEqual(metadata.varNames, ['person_id', 'name'])
-            # self.assertEqual(metadata.varTypes, {'name': 12, 'person_id': 0})
+            self.assertEqual(metadata.varNames, ['person_id', 'name', 'salary', 'bdate'])
+            self.assertEqual(metadata.formats, {'name': 'A10', 'person_id': 'F8',
+                                                'salary': 'DOLLAR8', 'bdate': 'ADATE10'})
+            self.assertEqual(metadata.varTypes, {'name': 10, 'person_id': 0, 'bdate': 0,
+                                                 'salary': 0})
 
 
 class TestStorageDescribe(unittest.TestCase):

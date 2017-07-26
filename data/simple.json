@@ -5,11 +5,25 @@
             "type": "integer",
             "constraints": {
                 "required": true
-            }
+            },
+            "spss:format": "F8"
         },
         {
             "name": "name",
-            "type": "string"
+            "type": "string",
+            "spss:format": "A10"
+        },
+        {
+            "type": "number",
+            "name": "salary",
+            "title": "Current Salary",
+            "spss:format": "DOLLAR8"
+        },
+        {
+           "type": "date",
+           "name": "bdate",
+           "title": "Date of Birth",
+           "spss:format": "ADATE10"
         }
     ]
 }

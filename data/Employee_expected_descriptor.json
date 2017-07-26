@@ -2,42 +2,52 @@
     "fields": [{
         "type": "integer",
         "name": "id",
-        "title": "Employee Code"
+        "title": "Employee Code",
+        "spss:format": "F4"
     }, {
         "type": "string",
         "name": "gender",
-        "title": "Gender"
+        "title": "Gender",
+        "spss:format": "A1"
     }, {
         "type": "date",
         "name": "bdate",
-        "title": "Date of Birth"
+        "title": "Date of Birth",
+        "spss:format": "ADATE10"
     }, {
         "type": "integer",
         "name": "educ",
-        "title": "Educational Level (years)"
+        "title": "Educational Level (years)",
+        "spss:format": "F2"
     }, {
         "type": "integer",
         "name": "jobcat",
-        "title": "Employment Category"
+        "title": "Employment Category",
+        "spss:format": "F1"
     }, {
         "type": "number",
         "name": "salary",
-        "title": "Current Salary"
+        "title": "Current Salary",
+        "spss:format": "DOLLAR8"
     }, {
         "type": "number",
         "name": "salbegin",
-        "title": "Beginning Salary"
+        "title": "Beginning Salary",
+        "spss:format": "DOLLAR8"
     }, {
         "type": "integer",
         "name": "jobtime",
-        "title": "Months since Hire"
+        "title": "Months since Hire",
+        "spss:format": "F2"
     }, {
         "type": "integer",
         "name": "prevexp",
-        "title": "Previous Experience (months)"
+        "title": "Previous Experience (months)",
+        "spss:format": "F6"
     }, {
         "type": "integer",
         "name": "minority",
-        "title": "Minority Classification"
+        "title": "Minority Classification",
+        "spss:format": "F1"
     }]
 }

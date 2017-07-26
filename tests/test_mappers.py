@@ -1,3 +1,5 @@
+import io
+import json
 import unittest
 
 from tableschema_spss import mappers
@@ -7,6 +9,55 @@ def test_bucket_to_filename():
     assert mappers.bucket_to_filename('bucket') == 'bucket.sav'
     assert mappers.bucket_to_filename('bucket.sav') == 'bucket.sav'
     assert mappers.bucket_to_filename('bucket.zsav') == 'bucket.zsav'
+
+
+class TestDescriptorToWriterArgs(unittest.TestCase):
+
+    def test_descriptor_to_savreaderwriter_args_simple_descriptor(self):
+        '''A simple schema returns expected kwarg dict.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+        kwargs = mappers.descriptor_to_savreaderwriter_args(simple_descriptor)
+
+        expected = {
+            'formats': {
+                u'bdate': u'ADATE10',
+                u'name': u'A10',
+                u'person_id': u'F8',
+                u'salary': u'DOLLAR8'
+            },
+            'varNames': [u'person_id', u'name', u'salary', u'bdate'],
+            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0}
+        }
+
+        self.assertEqual(kwargs, expected)
+
+    def test_descriptor_to_savreaderwriter_args_missing_number_formats(self):
+        '''Missing formats from number types should be discoverable.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+        for f in simple_descriptor["fields"]:
+            # Remove the format from person_id and name
+            if f['name'] == 'person_id':
+                del f['spss:format']
+        kwargs = mappers.descriptor_to_savreaderwriter_args(simple_descriptor)
+
+        expected = {
+            'formats': {u'bdate': u'ADATE10', u'name': u'A10', u'salary': u'DOLLAR8'},
+            'varNames': [u'person_id', u'name', u'salary', u'bdate'],
+            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0}
+        }
+
+        self.assertEqual(kwargs, expected)
+
+    def test_descriptor_to_savreaderwriter_args_missing_string_formats(self):
+        '''Missing formats from string types raise error.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+        for f in simple_descriptor["fields"]:
+            # Remove the format from person_id and name
+            if f['name'] == 'name':
+                del f['spss:format']
+
+        with self.assertRaises(ValueError):
+            mappers.descriptor_to_savreaderwriter_args(simple_descriptor)
 
 
 class TestSPSSTypeMapper(unittest.TestCase):
