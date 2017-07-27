@@ -12,6 +12,7 @@ import json
 from decimal import Decimal
 
 import savReaderWriter
+import six
 
 from tableschema_spss import Storage
 
@@ -92,11 +93,59 @@ class TestStorageCreate(unittest.TestCase):
 
         with savReaderWriter.SavHeaderReader(self.TEST_FILE_PATH, ioUtf8=True) as header:
             metadata = header.all()
-            self.assertEqual(metadata.varNames, ['person_id', 'name', 'salary', 'bdate'])
+            self.assertEqual(metadata.varNames, ['person_id', 'name', 'salary', 'bdate',
+                                                 'var_datetime', 'var_time'])
             self.assertEqual(metadata.formats, {'name': 'A10', 'person_id': 'F8',
-                                                'salary': 'DOLLAR8', 'bdate': 'ADATE10'})
+                                                'salary': 'DOLLAR8', 'bdate': 'ADATE10',
+                                                'var_datetime': 'DATETIME19',
+                                                'var_time': 'TIME10'})
             self.assertEqual(metadata.varTypes, {'name': 10, 'person_id': 0, 'bdate': 0,
-                                                 'salary': 0})
+                                                 'salary': 0, 'var_datetime': 0,
+                                                 'var_time': 0})
+
+
+class TestStorageWrite(unittest.TestCase):
+
+    TEST_BASE_PATH = 'data'
+    TEST_FILE_NAME = 'test_simple.sav'
+    TEST_FILE_PATH = os.path.join(TEST_BASE_PATH, TEST_FILE_NAME)
+
+    def tearDown(self):
+        if os.path.exists(self.TEST_FILE_PATH):
+            os.remove(self.TEST_FILE_PATH)
+
+    def test_write_file_exists(self):
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+
+        # create file with no rows
+        storage.create(self.TEST_FILE_NAME, simple_descriptor)
+        self.assertEqual(storage.read(self.TEST_FILE_NAME), [])
+
+        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
+                 datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
+        storage.write(self.TEST_FILE_NAME, rows)
+
+        self.assertEqual(storage.read(self.TEST_FILE_NAME), rows)
+
+    def test_write_file_doesnot_exist(self):
+        '''Trying to write to a file that does not exist raises exception.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+
+        # create file with no rows
+        storage.create(self.TEST_FILE_NAME, simple_descriptor)
+        self.assertEqual(storage.read(self.TEST_FILE_NAME), [])
+
+        # remove the file
+        os.remove(self.TEST_FILE_PATH)
+
+        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3)]]
+        # try to write to it
+        with self.assertRaises(RuntimeError):
+            storage.write(self.TEST_FILE_NAME, rows)
 
 
 class TestStorageDescribe(unittest.TestCase):
@@ -153,3 +202,19 @@ class TestStorageIter_Read(unittest.TestCase):
             self.assertEqual(self.EXPECTED_DATA[i], row)
             if i == 9:
                 break
+
+
+class TestStorageRead_Dates(unittest.TestCase):
+
+    TEST_BASE_PATH = 'data'
+    EXPECTED_FIRST_ROW = \
+        [datetime.datetime(2010, 8, 11, 0, 0), u'32 WK 2010', datetime.date(2010, 8, 11),
+         u'3 Q 2010', datetime.date(2010, 8, 11), datetime.date(2010, 8, 11),
+         u'156260 00:00:00', datetime.date(2010, 8, 11), u'August', u'August 2010',
+         datetime.time(0, 0), datetime.date(2010, 8, 11), u'Wednesday']
+
+    def test_read_date_file(self):
+        '''Test various date formated fields from test file'''
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        row = six.next(storage.iter('test_dates.sav'))
+        self.assertEqual(row, self.EXPECTED_FIRST_ROW)

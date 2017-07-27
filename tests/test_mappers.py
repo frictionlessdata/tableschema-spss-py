@@ -23,10 +23,14 @@ class TestDescriptorToWriterArgs(unittest.TestCase):
                 u'bdate': u'ADATE10',
                 u'name': u'A10',
                 u'person_id': u'F8',
-                u'salary': u'DOLLAR8'
+                u'salary': u'DOLLAR8',
+                u'var_datetime': u'DATETIME19',
+                u'var_time': u'TIME10'
             },
-            'varNames': [u'person_id', u'name', u'salary', u'bdate'],
-            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0}
+            'varNames': [u'person_id', u'name', u'salary', u'bdate', u'var_datetime',
+                         u'var_time'],
+            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0,
+                         u'var_datetime': 0, u'var_time': 0}
         }
 
         self.assertEqual(kwargs, expected)
@@ -41,9 +45,12 @@ class TestDescriptorToWriterArgs(unittest.TestCase):
         kwargs = mappers.descriptor_to_savreaderwriter_args(simple_descriptor)
 
         expected = {
-            'formats': {u'bdate': u'ADATE10', u'name': u'A10', u'salary': u'DOLLAR8'},
-            'varNames': [u'person_id', u'name', u'salary', u'bdate'],
-            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0}
+            'formats': {u'bdate': u'ADATE10', u'name': u'A10', u'salary': u'DOLLAR8',
+                        u'var_datetime': u'DATETIME19', u'var_time': u'TIME10'},
+            'varNames': [u'person_id', u'name', u'salary', u'bdate', u'var_datetime',
+                         u'var_time'],
+            'varTypes': {u'bdate': 0, u'name': 10, u'person_id': 0, u'salary': 0,
+                         u'var_datetime': 0, u'var_time': 0}
         }
 
         self.assertEqual(kwargs, expected)

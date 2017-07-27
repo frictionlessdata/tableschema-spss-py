@@ -5,15 +5,20 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
+from dateutil import parser
+import datetime
 
 import six
 import tableschema
 import savReaderWriter
+from tableschema_spss.mappers import (
+    DATE_FORMAT,
+    DATETIME_FORMAT,
+    TIME_FORMAT
+)
 
 from . import mappers
 
-
-# Module API
 
 class Storage(object):
     """SPSS Tabular Storage.
@@ -97,8 +102,8 @@ class Storage(object):
                 raise RuntimeError(message)
 
             # map descriptor to sav header format so we can use the method below.
-            args = mappers.descriptor_to_savreaderwriter_args(descriptor)
-            writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **args)
+            kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+            writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **kwargs)
             writer.close()
 
         self.__buckets = self.__list_bucket_filenames()
@@ -130,7 +135,7 @@ class Storage(object):
         file_path = os.path.join(self.__base_path, filename)
 
         # Yield rows
-        with savReaderWriter.SavReader(file_path, ioUtf8=True, rawMode=False) as reader:
+        with savReaderWriter.SavReader(file_path, ioUtf8=False, rawMode=False) as reader:
             for r in reader:
                 row = []
                 for i, field in enumerate(schema.fields):
@@ -138,14 +143,9 @@ class Storage(object):
                     # Fix decimals that should be integers
                     if field.type == 'integer':
                         value = int(float(value))
-                    # In Py3, date is returned as 'seconds since Gregorian epoch',
-                    # transform it to a string date.
-                    if field.type == 'date' and type(value) is float:
-                        value = reader.spss2strDate(value, "%Y-%m-%d", None)
-                    elif field.type == 'datetime' and type(value) is float:
-                        value = reader.spss2strDate(value, "%Y-%m-%d %H:%M:%S", None)
-                    elif field.type == 'time' and type(value) is float:
-                        value = reader.spss2strDate(value, "%H:%M:%S.%f", None)
+                    # We need to decode bytes to strings
+                    if isinstance(value, six.binary_type):
+                        value = value.decode('utf-8')
                     row.append(value)
                 yield schema.cast_row(row)
 
@@ -153,4 +153,33 @@ class Storage(object):
         return list(self.iter(bucket))
 
     def write(self, bucket, rows):
-        pass
+        filename = mappers.bucket_to_filename(bucket)
+        file_path = os.path.join(self.__base_path, filename)
+
+        if not os.path.exists(file_path):
+            message = 'File "%s" doesn\'t exist.' % file_path
+            raise RuntimeError(message)
+
+        descriptor = self.describe(bucket)
+        kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+
+        schema = tableschema.Schema(descriptor)
+
+        with savReaderWriter.SavWriter(file_path, mode=b"ab",
+                                       ioUtf8=True, **kwargs) as writer:
+            for r in rows:
+                row = []
+                for i, field in enumerate(schema.fields):
+                    value = r[i]
+                    if field.type == 'date' and isinstance(value, datetime.date):
+                        value = writer.spssDateTime(
+                            value.strftime(DATE_FORMAT).encode(), DATE_FORMAT)
+                    elif field.type == 'datetime' and isinstance(value,
+                                                                 datetime.datetime):
+                        value = writer.spssDateTime(
+                            value.strftime(DATETIME_FORMAT).encode(), DATETIME_FORMAT)
+                    elif field.type == 'time' and isinstance(value, datetime.time):
+                        value = writer.spssDateTime(
+                            value.strftime(TIME_FORMAT).encode(), TIME_FORMAT)
+                    row.append(value)
+                writer.writerow(row)

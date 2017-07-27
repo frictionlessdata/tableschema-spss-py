@@ -23,7 +23,22 @@
            "type": "date",
            "name": "bdate",
            "title": "Date of Birth",
+           "format": "%Y-%m-%d",
            "spss:format": "ADATE10"
+        },
+        {
+           "type": "datetime",
+           "name": "var_datetime",
+           "title": "Example datetime",
+           "format": "%Y-%m-%d %H:%M:%S",
+           "spss:format": "DATETIME19"
+        },
+        {
+           "type": "time",
+           "name": "var_time",
+           "title": "Example time",
+           "format": "%H:%M:%S.%f",
+           "spss:format": "TIME10"
         }
     ]
 }

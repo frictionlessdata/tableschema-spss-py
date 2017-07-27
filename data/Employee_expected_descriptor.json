@@ -13,6 +13,7 @@
         "type": "date",
         "name": "bdate",
         "title": "Date of Birth",
+        "format": "%Y-%m-%d",
         "spss:format": "ADATE10"
     }, {
         "type": "integer",

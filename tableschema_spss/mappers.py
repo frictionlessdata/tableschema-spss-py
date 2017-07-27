@@ -5,6 +5,10 @@ import tableschema
 import logging
 log = logging.getLogger(__name__)
 
+DATE_FORMAT = "%Y-%m-%d"
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+TIME_FORMAT = "%H:%M:%S.%f"
+
 
 def bucket_to_filename(bucket):
     '''Ensure bucket has appropriate file extension'''
@@ -66,12 +70,21 @@ def spss_header_to_descriptor(header):
     '''
     fields = []
     for var in header.varNames:
+        field_type = spss_type_format_to_schema_type(header.formats[var])
         field = {
             'name': var,
-            'type': spss_type_format_to_schema_type(header.formats[var]),
+            'type': field_type,
             'title': header.varLabels[var],
             'spss:format': header.formats[var]
         }
+        date_formats = {
+            'time': TIME_FORMAT,
+            'date': DATE_FORMAT,
+            'datetime': DATETIME_FORMAT
+        }
+        if field_type in date_formats.keys():
+            field['format'] = date_formats[field_type]
+
         fields.append(field)
     return {'fields': fields}
 
