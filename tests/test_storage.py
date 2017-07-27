@@ -20,6 +20,11 @@ import logging
 log = logging.getLogger(__name__)
 
 
+def test_storage_repr():
+
+    assert repr(Storage(base_path='data')) == 'Storage <data>'
+
+
 class TestBasePath(unittest.TestCase):
 
     def test_base_path_exists(self):
