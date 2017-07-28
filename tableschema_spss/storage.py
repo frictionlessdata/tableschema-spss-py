@@ -82,7 +82,7 @@ class Storage(object):
         for bucket in reversed(self.buckets):
             if bucket in buckets:
                 if not force:
-                    message = 'File "%s" already exists.' % bucket
+                    message = 'Bucket "%s" already exists.' % bucket
                     raise RuntimeError(message)
                 self.delete(bucket)
 
@@ -109,7 +109,40 @@ class Storage(object):
         self.__buckets = self.__list_bucket_filenames()
 
     def delete(self, bucket=None, ignore=False):
-        pass
+        buckets = bucket
+        if isinstance(bucket, six.string_types):
+            buckets = [bucket]
+        elif bucket is None:
+            buckets = reversed(self.buckets)
+
+        # Iterate over buckets
+        filenames = []
+        for bucket in buckets:
+            # Check bucket exists
+            if bucket not in self.buckets:
+                if not ignore:
+                    message = 'Bucket "%s" doesn\'t exist.' % bucket
+                    raise RuntimeError(message)
+
+            # Remove corresponding descriptor
+            if bucket in self.__descriptors:
+                del self.__descriptors[bucket]
+
+            # Add filename to filenames
+            filename = mappers.bucket_to_filename(bucket)
+            filenames.append(filename)
+
+        # Remove files
+        for filename in filenames:
+            file_path = os.path.join(self.__base_path, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            elif not ignore:
+                message = 'File "%s" doesn\'t exist.' % file_path
+                raise RuntimeError(message)
+
+        # Reindex buckets
+        self.__buckets = self.__list_bucket_filenames()
 
     def describe(self, bucket, descriptor=None):
         # Set descriptor

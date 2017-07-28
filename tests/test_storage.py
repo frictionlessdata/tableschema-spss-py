@@ -25,6 +25,33 @@ def test_storage_repr():
     assert repr(Storage(base_path='data')) == 'Storage <data>'
 
 
+class BaseTestClass(unittest.TestCase):
+
+    @classmethod
+    def get_base_path(cls):
+        '''Making this a readonly property prevents it being overridden, and subsequently
+        deleted!'''
+        return 'data/delete_tests'
+
+    def tearDown(self):
+        # Remove all files under test path
+        files = os.listdir(self.get_base_path())
+        for f in files:
+            os.remove(os.path.join(self.get_base_path(), f))
+
+    @classmethod
+    def setUpClass(cls):
+        # Create directory for writing test files
+        if not os.path.exists(cls.get_base_path()):
+            os.mkdir(cls.get_base_path())
+
+    @classmethod
+    def tearDownClass(cls):
+        # Remove test directory
+        if os.path.exists(cls.get_base_path()):
+            os.rmdir(cls.get_base_path())
+
+
 class TestBasePath(unittest.TestCase):
 
     def test_base_path_exists(self):
@@ -45,15 +72,11 @@ class TestBasePath(unittest.TestCase):
             Storage(base_path='data/simple.json')
 
 
-class TestStorageCreate(unittest.TestCase):
+class TestStorageCreate(BaseTestClass):
 
-    TEST_BASE_PATH = 'data'
+    TEST_BASE_PATH = BaseTestClass.get_base_path()
     TEST_FILE_NAME = 'test_simple.sav'
     TEST_FILE_PATH = os.path.join(TEST_BASE_PATH, TEST_FILE_NAME)
-
-    def tearDown(self):
-        if os.path.exists(self.TEST_FILE_PATH):
-            os.remove(self.TEST_FILE_PATH)
 
     def test_storage_create_creates_file(self):
         '''Storage .sav file created by create()'''
@@ -63,6 +86,7 @@ class TestStorageCreate(unittest.TestCase):
 
         storage.create(self.TEST_FILE_NAME, simple_descriptor)
         assert os.path.exists(self.TEST_FILE_PATH)
+        self.assertEqual(storage.buckets, ['test_simple.sav'])
 
     def test_storage_create_protect_existing(self):
         '''create() called twice raises exception preventing overwrite of existing
@@ -109,15 +133,11 @@ class TestStorageCreate(unittest.TestCase):
                                                  'var_time': 0})
 
 
-class TestStorageWrite(unittest.TestCase):
+class TestStorageWrite(BaseTestClass):
 
-    TEST_BASE_PATH = 'data'
+    TEST_BASE_PATH = BaseTestClass.get_base_path()
     TEST_FILE_NAME = 'test_simple.sav'
     TEST_FILE_PATH = os.path.join(TEST_BASE_PATH, TEST_FILE_NAME)
-
-    def tearDown(self):
-        if os.path.exists(self.TEST_FILE_PATH):
-            os.remove(self.TEST_FILE_PATH)
 
     def test_write_file_exists(self):
         simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
@@ -154,22 +174,21 @@ class TestStorageWrite(unittest.TestCase):
             storage.write(self.TEST_FILE_NAME, rows)
 
 
-class TestStorageDescribe(unittest.TestCase):
-
-    TEST_BASE_PATH = 'data'
+class TestStorageDescribe(BaseTestClass):
 
     def test_describe(self):
         '''Return the expected schema descriptor.'''
         expected_schema = json.load(io.open('data/Employee_expected_descriptor.json',
                                             encoding='utf-8'))
-        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage = Storage(base_path='data')
         schema = storage.describe('Employee data.sav')
         self.assertEqual(expected_schema, schema)
 
 
-class TestStorageIter_Read(unittest.TestCase):
+class TestStorageIter_Read(BaseTestClass):
 
-    TEST_BASE_PATH = 'data'
+    READ_TEST_BASE_PATH = 'data'
+
     EXPECTED_DATA = [
         [1, 'm', datetime.date(1952, 2, 3), 15, 3, Decimal('57000'), Decimal('27000'),
          98, 144, 0],
@@ -194,7 +213,7 @@ class TestStorageIter_Read(unittest.TestCase):
     ]
 
     def test_iter(self):
-        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
         for i, row in enumerate(storage.iter('Employee data.sav')):
             # Test the first 10 rows against the expected data.
             self.assertEqual(self.EXPECTED_DATA[i], row)
@@ -202,7 +221,7 @@ class TestStorageIter_Read(unittest.TestCase):
                 break
 
     def test_read(self):
-        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
         for i, row in enumerate(storage.read('Employee data.sav')):
             # Test the first 10 rows against the expected data.
             self.assertEqual(self.EXPECTED_DATA[i], row)
@@ -210,9 +229,10 @@ class TestStorageIter_Read(unittest.TestCase):
                 break
 
 
-class TestStorageRead_Dates(unittest.TestCase):
+class TestStorageRead_Dates(BaseTestClass):
 
-    TEST_BASE_PATH = 'data'
+    READ_TEST_BASE_PATH = 'data'
+
     EXPECTED_FIRST_ROW = \
         [datetime.datetime(2010, 8, 11, 0, 0), u'32 WK 2010', datetime.date(2010, 8, 11),
          u'3 Q 2010', datetime.date(2010, 8, 11), datetime.date(2010, 8, 11),
@@ -221,13 +241,85 @@ class TestStorageRead_Dates(unittest.TestCase):
 
     def test_read_date_file(self):
         '''Test various date formated fields from test file'''
-        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
         row = six.next(storage.iter('test_dates.sav'))
         self.assertEqual(row, self.EXPECTED_FIRST_ROW)
 
     def test_read_time_with_no_decimal(self):
         '''Test file containing time field with no decimals.'''
-        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
         expected_time = datetime.time(16, 0)
         row = six.next(storage.iter('test_time_no_decimal.sav'))
         self.assertEqual(row[2], expected_time)
+
+
+class TestStorageDelete(BaseTestClass):
+
+    TEST_BASE_PATH = BaseTestClass.get_base_path()
+    TEST_FILE_PATH = os.path.join(TEST_BASE_PATH, 'delme.sav')
+    SIMPLE_DESCRIPTOR = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+    def test_delete_file(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+        self.assertEqual(storage.buckets, ['delme.sav'])
+
+        storage.delete('delme.sav')
+
+        # File was deleted
+        self.assertFalse(os.path.exists(self.TEST_FILE_PATH))
+        self.assertEqual(storage.buckets, [])
+
+    def test_delete_file_doesnot_exist(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+
+        # File is removed externally
+        os.remove(self.TEST_FILE_PATH)
+
+        with self.assertRaises(RuntimeError):
+            storage.delete('delme.sav')
+
+    def test_delete_file_doesnot_exist_ignore(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+
+        # File is removed externally
+        os.remove(self.TEST_FILE_PATH)
+
+        # File was deleted
+        self.assertFalse(os.path.exists(self.TEST_FILE_PATH))
+
+        # Delete and ignore missing
+        try:
+            storage.delete('delme.sav', ignore=True)
+        except(RuntimeError):
+            self.fail('delete() shouldn\'t raise exception')
+
+        self.assertEqual(storage.buckets, [])
+
+    def test_delete_all_files(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+        storage.create('delme_too.sav', self.SIMPLE_DESCRIPTOR)
+        storage.create('delme_also.sav', self.SIMPLE_DESCRIPTOR)
+
+        expected_buckets = ['delme.sav', 'delme_also.sav', 'delme_too.sav']
+
+        self.assertEqual(os.listdir(self.TEST_BASE_PATH), expected_buckets)
+        self.assertEqual(storage.buckets, expected_buckets)
+
+        # no specified bucket, delete everything!
+        storage.delete()
+
+        self.assertEqual(os.listdir(self.TEST_BASE_PATH), [])
+        self.assertEqual(storage.buckets, [])
