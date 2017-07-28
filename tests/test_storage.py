@@ -323,3 +323,31 @@ class TestStorageDelete(BaseTestClass):
 
         self.assertEqual(os.listdir(self.TEST_BASE_PATH), [])
         self.assertEqual(storage.buckets, [])
+
+
+class TestSafeFilePath(BaseTestClass):
+
+    TEST_BASE_PATH = BaseTestClass.get_base_path()
+    SIMPLE_DESCRIPTOR = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+    def test_valid_bucket_name(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        try:
+            storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+            storage.create('delme_too', self.SIMPLE_DESCRIPTOR)
+        except RuntimeError:
+            self.fail('Creating with a valid bucket name shouldn\'t fail')
+
+    def test_invalid_bucket_name(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        with self.assertRaises(RuntimeError):
+            storage.create('../delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        with self.assertRaises(RuntimeError):
+            storage.create('/delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        with self.assertRaises(RuntimeError):
+            storage.create('/delme', self.SIMPLE_DESCRIPTOR)
+
+        with self.assertRaises(RuntimeError):
+            storage.create('../../delme', self.SIMPLE_DESCRIPTOR)

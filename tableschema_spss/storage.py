@@ -46,6 +46,16 @@ class Storage(object):
         '''Find .sav files at base_path and return bucket filenames'''
         return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
 
+    def __get_safe_file_path(self, bucket):
+        '''Return a file_path to `bucket` that doesn't traverse outside the base
+        directory.'''
+        filename = mappers.bucket_to_filename(bucket)
+        file_path = os.path.join(self.__base_path, filename)
+        norm_file_path = os.path.normpath(file_path)
+        if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
+            raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
+        return norm_file_path
+
     @property
     def buckets(self):
         '''List all .sav and .zsav files at __base_path'''
@@ -94,8 +104,7 @@ class Storage(object):
 
             # Create .sav file
             tableschema.validate(descriptor)
-            filename = mappers.bucket_to_filename(bucket)
-            file_path = os.path.join(self.__base_path, filename)
+            file_path = self.__get_safe_file_path(bucket)
 
             if not force and os.path.exists(file_path):
                 message = 'File "%s" already exists.' % file_path
@@ -116,7 +125,6 @@ class Storage(object):
             buckets = reversed(self.buckets)
 
         # Iterate over buckets
-        filenames = []
         for bucket in buckets:
             # Check bucket exists
             if bucket not in self.buckets:
@@ -128,13 +136,7 @@ class Storage(object):
             if bucket in self.__descriptors:
                 del self.__descriptors[bucket]
 
-            # Add filename to filenames
-            filename = mappers.bucket_to_filename(bucket)
-            filenames.append(filename)
-
-        # Remove files
-        for filename in filenames:
-            file_path = os.path.join(self.__base_path, filename)
+            file_path = self.__get_safe_file_path(bucket)
             if os.path.exists(file_path):
                 os.remove(file_path)
             elif not ignore:
@@ -153,8 +155,7 @@ class Storage(object):
         else:
             descriptor = self.__descriptors.get(bucket)
             if descriptor is None:
-                filename = mappers.bucket_to_filename(bucket)
-                file_path = os.path.join(self.__base_path, filename)
+                file_path = self.__get_safe_file_path(bucket)
                 with savReaderWriter.SavHeaderReader(file_path, ioUtf8=True) as header:
                     descriptor = mappers.spss_header_to_descriptor(header.all())
 
@@ -164,8 +165,7 @@ class Storage(object):
         # Get response
         descriptor = self.describe(bucket)
         schema = tableschema.Schema(descriptor)
-        filename = mappers.bucket_to_filename(bucket)
-        file_path = os.path.join(self.__base_path, filename)
+        file_path = self.__get_safe_file_path(bucket)
 
         # Yield rows
         with savReaderWriter.SavReader(file_path, ioUtf8=False, rawMode=False) as reader:
@@ -189,8 +189,7 @@ class Storage(object):
         return list(self.iter(bucket))
 
     def write(self, bucket, rows):
-        filename = mappers.bucket_to_filename(bucket)
-        file_path = os.path.join(self.__base_path, filename)
+        file_path = self.__get_safe_file_path(bucket)
 
         if not os.path.exists(file_path):
             message = 'File "%s" doesn\'t exist.' % file_path
