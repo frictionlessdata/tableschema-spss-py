@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
+import re
 import datetime
 
 import six
@@ -145,6 +146,9 @@ class Storage(object):
                     # We need to decode bytes to strings
                     if isinstance(value, six.binary_type):
                         value = value.decode('utf-8')
+                    # Time values need a decimal, add one if missing.
+                    if field.type == 'time' and not re.search(r'\.\d*', value):
+                            value = '{}.0'.format(value)
                     row.append(value)
                 yield schema.cast_row(row)
 

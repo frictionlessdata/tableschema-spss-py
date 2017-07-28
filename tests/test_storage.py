@@ -147,7 +147,8 @@ class TestStorageWrite(unittest.TestCase):
         # remove the file
         os.remove(self.TEST_FILE_PATH)
 
-        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3)]]
+        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
+                 datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
         # try to write to it
         with self.assertRaises(RuntimeError):
             storage.write(self.TEST_FILE_NAME, rows)
@@ -223,3 +224,10 @@ class TestStorageRead_Dates(unittest.TestCase):
         storage = Storage(base_path=self.TEST_BASE_PATH)
         row = six.next(storage.iter('test_dates.sav'))
         self.assertEqual(row, self.EXPECTED_FIRST_ROW)
+
+    def test_read_time_with_no_decimal(self):
+        '''Test file containing time field with no decimals.'''
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        expected_time = datetime.time(16, 0)
+        row = six.next(storage.iter('test_time_no_decimal.sav'))
+        self.assertEqual(row[2], expected_time)
