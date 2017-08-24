@@ -71,6 +71,14 @@ class TestBasePath(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             Storage(base_path='data/simple.json')
 
+    def test_base_path_no_path_defined(self):
+        '''No base_path defined shouldn't raise exception'''
+        try:
+            Storage()
+        except Exception as e:
+            print(e)
+            self.fail("Storage() raised Exception")
+
 
 class TestStorageCreate(BaseTestClass):
 
@@ -88,6 +96,16 @@ class TestStorageCreate(BaseTestClass):
         assert os.path.exists(self.TEST_FILE_PATH)
         self.assertEqual(storage.buckets, ['test_simple.sav'])
 
+    def test_storage_create_creates_file_no_base_path(self):
+        '''Storage .sav file created by create() with no base_path'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage()
+        storage.create(self.TEST_FILE_PATH, simple_descriptor)
+        assert os.path.exists(self.TEST_FILE_PATH)
+        # storage.buckets not maintained for storage with no base_path
+        self.assertEqual(storage.buckets, None)
+
     def test_storage_create_protect_existing(self):
         '''create() called twice raises exception preventing overwrite of existing
         file.'''
@@ -99,6 +117,17 @@ class TestStorageCreate(BaseTestClass):
         with self.assertRaises(RuntimeError):
             storage.create(self.TEST_FILE_NAME, simple_descriptor)
 
+    def test_storage_create_protect_existing_no_base_path(self):
+        '''create() called twice raises exception preventing overwrite of existing
+        file.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage()
+
+        storage.create(self.TEST_FILE_PATH, simple_descriptor)
+        with self.assertRaises(RuntimeError):
+            storage.create(self.TEST_FILE_PATH, simple_descriptor)
+
     def test_storage_create_force_overwrite(self):
         '''create() called twice with force=True allows file overwrite.'''
         simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
@@ -108,6 +137,19 @@ class TestStorageCreate(BaseTestClass):
         storage.create(self.TEST_FILE_NAME, simple_descriptor)
         try:
             storage.create(self.TEST_FILE_NAME, simple_descriptor, force=True)
+        except RuntimeError:
+            self.fail("create() raised RuntimeError")
+        assert os.path.exists(self.TEST_FILE_PATH)
+
+    def test_storage_create_force_overwrite_no_base_path(self):
+        '''create() called twice with force=True allows file overwrite.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage()
+
+        storage.create(self.TEST_FILE_PATH, simple_descriptor)
+        try:
+            storage.create(self.TEST_FILE_PATH, simple_descriptor, force=True)
         except RuntimeError:
             self.fail("create() raised RuntimeError")
         assert os.path.exists(self.TEST_FILE_PATH)
@@ -154,6 +196,21 @@ class TestStorageWrite(BaseTestClass):
 
         self.assertEqual(storage.read(self.TEST_FILE_NAME), rows)
 
+    def test_write_file_exists_no_base_path(self):
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage()
+
+        # create file with no rows
+        storage.create(self.TEST_FILE_PATH, simple_descriptor)
+        self.assertEqual(storage.read(self.TEST_FILE_PATH), [])
+
+        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
+                 datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
+        storage.write(self.TEST_FILE_PATH, rows)
+
+        self.assertEqual(storage.read(self.TEST_FILE_PATH), rows)
+
     def test_write_file_doesnot_exist(self):
         '''Trying to write to a file that does not exist raises exception.'''
         simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
@@ -173,6 +230,25 @@ class TestStorageWrite(BaseTestClass):
         with self.assertRaises(RuntimeError):
             storage.write(self.TEST_FILE_NAME, rows)
 
+    def test_write_file_doesnot_exist_no_base_path(self):
+        '''Trying to write to a file that does not exist raises exception.'''
+        simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
+
+        storage = Storage()
+
+        # create file with no rows
+        storage.create(self.TEST_FILE_PATH, simple_descriptor)
+        self.assertEqual(storage.read(self.TEST_FILE_PATH), [])
+
+        # remove the file
+        os.remove(self.TEST_FILE_PATH)
+
+        rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
+                 datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
+        # try to write to it
+        with self.assertRaises(RuntimeError):
+            storage.write(self.TEST_FILE_PATH, rows)
+
 
 class TestStorageDescribe(BaseTestClass):
 
@@ -183,6 +259,22 @@ class TestStorageDescribe(BaseTestClass):
         storage = Storage(base_path='data')
         schema = storage.describe('Employee data.sav')
         self.assertEqual(expected_schema, schema)
+
+    def test_describe_no_base_path(self):
+        '''Return the expected schema descriptor, with storage with no base_path.'''
+        expected_schema = json.load(io.open('data/Employee_expected_descriptor.json',
+                                            encoding='utf-8'))
+        storage = Storage()
+        # pass file path
+        schema = storage.describe('data/Employee data.sav')
+        self.assertEqual(expected_schema, schema)
+
+    def test_describe_no_base_path_invalid(self):
+        '''Attempting to describe an invalid file raises exception.'''
+        storage = Storage()
+        # pass file path
+        with self.assertRaises(RuntimeError):
+            storage.describe('data/no-file-here.sav')
 
 
 class TestStorageIter_Read(BaseTestClass):
@@ -212,21 +304,33 @@ class TestStorageIter_Read(BaseTestClass):
          98, 244, 0]
     ]
 
-    def test_iter(self):
-        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
-        for i, row in enumerate(storage.iter('Employee data.sav')):
+    def _assert_rows(self, rows):
+        for i, row in enumerate(rows):
             # Test the first 10 rows against the expected data.
             self.assertEqual(self.EXPECTED_DATA[i], row)
             if i == 9:
                 break
 
+    def test_iter(self):
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
+        self._assert_rows(storage.iter('Employee data.sav'))
+
+    def test_iter_no_base_path(self):
+        storage = Storage()
+        self._assert_rows(storage.iter('data/Employee data.sav'))
+
     def test_read(self):
         storage = Storage(base_path=self.READ_TEST_BASE_PATH)
-        for i, row in enumerate(storage.read('Employee data.sav')):
-            # Test the first 10 rows against the expected data.
-            self.assertEqual(self.EXPECTED_DATA[i], row)
-            if i == 9:
-                break
+        self._assert_rows(storage.read('Employee data.sav'))
+
+    def test_read_no_base_path(self):
+        storage = Storage()
+        self._assert_rows(storage.read('data/Employee data.sav'))
+
+    def test_read_no_base_path_invalid(self):
+        storage = Storage()
+        with self.assertRaises(RuntimeError):
+            storage.read('data/no-file-here.sav')
 
 
 class TestStorageRead_Dates(BaseTestClass):
@@ -273,6 +377,20 @@ class TestStorageDelete(BaseTestClass):
         self.assertFalse(os.path.exists(self.TEST_FILE_PATH))
         self.assertEqual(storage.buckets, [])
 
+    def test_delete_file_no_base_path(self):
+        storage = Storage()
+        storage.create(self.TEST_FILE_PATH, self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+        self.assertEqual(storage.buckets, None)
+
+        storage.delete(self.TEST_FILE_PATH)
+
+        # File was deleted
+        self.assertFalse(os.path.exists(self.TEST_FILE_PATH))
+        self.assertEqual(storage.buckets, None)
+
     def test_delete_file_doesnot_exist(self):
         storage = Storage(base_path=self.TEST_BASE_PATH)
         storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
@@ -285,6 +403,32 @@ class TestStorageDelete(BaseTestClass):
 
         with self.assertRaises(RuntimeError):
             storage.delete('delme.sav')
+
+    def test_delete_bucket_doesnot_exist(self):
+        storage = Storage(base_path=self.TEST_BASE_PATH)
+        storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+
+        # File is removed externally
+        os.remove(self.TEST_FILE_PATH)
+
+        with self.assertRaises(RuntimeError):
+            storage.delete('no-file-here.sav')
+
+    def test_delete_file_doesnot_exist_no_base_path(self):
+        storage = Storage()
+        storage.create(self.TEST_FILE_PATH, self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+
+        # File is removed externally
+        os.remove(self.TEST_FILE_PATH)
+
+        with self.assertRaises(RuntimeError):
+            storage.delete(self.TEST_FILE_PATH)
 
     def test_delete_file_doesnot_exist_ignore(self):
         storage = Storage(base_path=self.TEST_BASE_PATH)
@@ -306,6 +450,27 @@ class TestStorageDelete(BaseTestClass):
             self.fail('delete() shouldn\'t raise exception')
 
         self.assertEqual(storage.buckets, [])
+
+    def test_delete_file_doesnot_exist_ignore_no_base_path(self):
+        storage = Storage()
+        storage.create(self.TEST_FILE_PATH, self.SIMPLE_DESCRIPTOR)
+
+        # File was created
+        self.assertTrue(os.path.exists(self.TEST_FILE_PATH))
+
+        # File is removed externally
+        os.remove(self.TEST_FILE_PATH)
+
+        # File was deleted
+        self.assertFalse(os.path.exists(self.TEST_FILE_PATH))
+
+        # Delete and ignore missing
+        try:
+            storage.delete(self.TEST_FILE_PATH, ignore=True)
+        except(RuntimeError):
+            self.fail('delete() shouldn\'t raise exception')
+
+        self.assertEqual(storage.buckets, None)
 
     def test_delete_all_files(self):
         storage = Storage(base_path=self.TEST_BASE_PATH)

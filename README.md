@@ -21,7 +21,9 @@ pip install tableschema-spss
 
 Package implements the [Tabular Storage](https://github.com/frictionlessdata/tableschema-py#storage) interface.
 
-We can get storage this way:
+#### With a base path
+
+We can get storage with a specified base path this way:
 
 ```python
 from tableschema_spss import Storage
@@ -43,6 +45,28 @@ storage.read('bucket') # return rows
 storage.write('bucket', rows)
 ```
 
+#### Without a base path
+
+We can also create storage without a base path this way:
+
+```python
+from tableschema_spss import Storage
+
+storage = Storage()  # no base path argument
+```
+
+Then we can specify SPSS files directly by passing their file path (instead of bucket names):
+
+```python
+storage.create('data/my-bucket.sav', descriptor)
+storage.delete('data/my-bucket.sav')  # deletes named file
+storage.describe('data/my-bucket.sav') # return tableschema descriptor
+storage.iter('data/my-bucket.sav') # yields rows
+storage.read('data/my-bucket.sav') # return rows
+storage.write('data/my-bucket.sav', rows)
+```
+
+Note that storage without base paths does not maintain an internal list of buckets, so calling `storage.buckets` will return `None`.
 
 #### Reading .sav files
 
