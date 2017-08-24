@@ -25,19 +25,20 @@ class Storage(object):
 
     An implementation of `tableschema.Storage`.
 
-    Args:
-        base_path (str): a valid file path where .sav files can be created and
-        read.
+    Args: base_path (str): a valid file path where .sav files can be created and read. If
+        no base_path is provided, the Storage object methods will accept file paths rather
+        than bucket names.
     """
 
-    def __init__(self, base_path):
+    def __init__(self, base_path=None):
         self.__descriptors = {}
-        if not os.path.isdir(base_path):
+        if base_path is not None and not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
             raise RuntimeError(message)
         self.__base_path = base_path
         # List all .sav and .zsav files at __base_path
-        self.__buckets = self.__list_bucket_filenames()
+        if base_path:
+            self.__buckets = self.__list_bucket_filenames()
 
     def __repr__(self):
         return 'Storage <{}>'.format(self.__base_path)
@@ -49,11 +50,21 @@ class Storage(object):
     def __get_safe_file_path(self, bucket):
         '''Return a file_path to `bucket` that doesn't traverse outside the base
         directory.'''
-        filename = mappers.bucket_to_filename(bucket)
-        file_path = os.path.join(self.__base_path, filename)
-        norm_file_path = os.path.normpath(file_path)
-        if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
-            raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
+
+        if self.__base_path:
+            # base_path exists, so `bucket` is relative to base_path
+            filename = mappers.bucket_to_filename(bucket)
+            file_path = os.path.join(self.__base_path, filename)
+            norm_file_path = os.path.normpath(file_path)
+            if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
+                raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
+        elif os.path.isfile(bucket):
+            # no base_path, so `bucket` is expected to be a valid file path
+            norm_file_path = bucket
+        else:
+            # bucket isn't a valid file path, bail
+            raise RuntimeError('`bucket` "{}" is not a valid file path'.format(bucket))
+
         return norm_file_path
 
     @property

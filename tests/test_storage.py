@@ -71,6 +71,14 @@ class TestBasePath(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             Storage(base_path='data/simple.json')
 
+    def test_base_path_no_path_defined(self):
+        '''No base_path defined shouldn't raise exception'''
+        try:
+            Storage()
+        except Exception as e:
+            print(e)
+            self.fail("Storage() raised Exception")
+
 
 class TestStorageCreate(BaseTestClass):
 
@@ -184,6 +192,22 @@ class TestStorageDescribe(BaseTestClass):
         schema = storage.describe('Employee data.sav')
         self.assertEqual(expected_schema, schema)
 
+    def test_describe_no_base_path(self):
+        '''Return the expected schema descriptor, with storage with no base_path.'''
+        expected_schema = json.load(io.open('data/Employee_expected_descriptor.json',
+                                            encoding='utf-8'))
+        storage = Storage()
+        # pass file path
+        schema = storage.describe('data/Employee data.sav')
+        self.assertEqual(expected_schema, schema)
+
+    def test_describe_no_base_path_invalid(self):
+        '''Attempting to describe an invalid file raises exception.'''
+        storage = Storage()
+        # pass file path
+        with self.assertRaises(RuntimeError):
+            storage.describe('data/no-file-here.sav')
+
 
 class TestStorageIter_Read(BaseTestClass):
 
@@ -212,21 +236,33 @@ class TestStorageIter_Read(BaseTestClass):
          98, 244, 0]
     ]
 
-    def test_iter(self):
-        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
-        for i, row in enumerate(storage.iter('Employee data.sav')):
+    def _assert_rows(self, rows):
+        for i, row in enumerate(rows):
             # Test the first 10 rows against the expected data.
             self.assertEqual(self.EXPECTED_DATA[i], row)
             if i == 9:
                 break
 
+    def test_iter(self):
+        storage = Storage(base_path=self.READ_TEST_BASE_PATH)
+        self._assert_rows(storage.iter('Employee data.sav'))
+
+    def test_iter_no_base_path(self):
+        storage = Storage()
+        self._assert_rows(storage.iter('data/Employee data.sav'))
+
     def test_read(self):
         storage = Storage(base_path=self.READ_TEST_BASE_PATH)
-        for i, row in enumerate(storage.read('Employee data.sav')):
-            # Test the first 10 rows against the expected data.
-            self.assertEqual(self.EXPECTED_DATA[i], row)
-            if i == 9:
-                break
+        self._assert_rows(storage.read('Employee data.sav'))
+
+    def test_read_no_base_path(self):
+        storage = Storage()
+        self._assert_rows(storage.read('data/Employee data.sav'))
+
+    def test_read_no_base_path_invalid(self):
+        storage = Storage()
+        with self.assertRaises(RuntimeError):
+            storage.read('data/no-file-here.sav')
 
 
 class TestStorageRead_Dates(BaseTestClass):
