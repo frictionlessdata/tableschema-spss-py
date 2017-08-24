@@ -21,33 +21,37 @@ from . import mappers
 
 
 class Storage(object):
-    """SPSS Tabular Storage.
+    '''SPSS Tabular Storage.
 
     An implementation of `tableschema.Storage`.
 
     Args: base_path (str): a valid file path where .sav files can be created and read. If
         no base_path is provided, the Storage object methods will accept file paths rather
         than bucket names.
-    """
+    '''
 
     def __init__(self, base_path=None):
         self.__descriptors = {}
+        self.__buckets = None
         if base_path is not None and not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
             raise RuntimeError(message)
         self.__base_path = base_path
         # List all .sav and .zsav files at __base_path
         if base_path:
-            self.__buckets = self.__list_bucket_filenames()
+            self.__reindex_buckets()
 
     def __repr__(self):
         return 'Storage <{}>'.format(self.__base_path)
+
+    def __reindex_buckets(self):
+        self.__buckets = self.__list_bucket_filenames()
 
     def __list_bucket_filenames(self):
         '''Find .sav files at base_path and return bucket filenames'''
         return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
 
-    def __get_safe_file_path(self, bucket):
+    def __get_safe_file_path(self, bucket, check_exists=False):
         '''Return a file_path to `bucket` that doesn't traverse outside the base
         directory.'''
 
@@ -58,22 +62,25 @@ class Storage(object):
             norm_file_path = os.path.normpath(file_path)
             if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
                 raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
-        elif os.path.isfile(bucket):
-            # no base_path, so `bucket` is expected to be a valid file path
-            norm_file_path = bucket
         else:
+            norm_file_path = bucket
+
+        if check_exists and not os.path.isfile(norm_file_path):
             # bucket isn't a valid file path, bail
-            raise RuntimeError('`bucket` "{}" is not a valid file path'.format(bucket))
+            raise RuntimeError('File "{}" does not exist.'.format(norm_file_path))
 
         return norm_file_path
 
     @property
     def buckets(self):
-        '''List all .sav and .zsav files at __base_path'''
+        '''List all .sav and .zsav files at __base_path.
+
+        Bucket list is only maintained if Storage has a valid base_path, otherwise will
+        return None.'''
         return self.__buckets
 
     def create(self, bucket, descriptor, force=False):
-        """Create bucket with descriptor.
+        '''Create bucket with descriptor.
 
         Parameters
         ----------
@@ -88,9 +95,7 @@ class Storage(object):
         ------
         RuntimeError
             If file already exists.
-
-        """
-
+        '''
         buckets = bucket
         if isinstance(bucket, six.string_types):
             buckets = [bucket]
@@ -100,16 +105,16 @@ class Storage(object):
         assert len(buckets) == len(descriptors)
 
         # Check buckets for existence
-        for bucket in reversed(self.buckets):
-            if bucket in buckets:
-                if not force:
-                    message = 'Bucket "%s" already exists.' % bucket
-                    raise RuntimeError(message)
-                self.delete(bucket)
+        if self.buckets:
+            for bucket in reversed(self.buckets):
+                if bucket in buckets:
+                    if not force:
+                        message = 'Bucket "%s" already exists.' % bucket
+                        raise RuntimeError(message)
+                    self.delete(bucket)
 
         # Define buckets
         for bucket, descriptor in zip(buckets, descriptors):
-
             # Add to schemas
             self.__descriptors[bucket] = descriptor
 
@@ -126,7 +131,8 @@ class Storage(object):
             writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **kwargs)
             writer.close()
 
-        self.__buckets = self.__list_bucket_filenames()
+        if self.buckets is not None:
+            self.__reindex_buckets()
 
     def delete(self, bucket=None, ignore=False):
         buckets = bucket
@@ -138,7 +144,7 @@ class Storage(object):
         # Iterate over buckets
         for bucket in buckets:
             # Check bucket exists
-            if bucket not in self.buckets:
+            if self.buckets is not None and bucket not in self.buckets:
                 if not ignore:
                     message = 'Bucket "%s" doesn\'t exist.' % bucket
                     raise RuntimeError(message)
@@ -154,8 +160,8 @@ class Storage(object):
                 message = 'File "%s" doesn\'t exist.' % file_path
                 raise RuntimeError(message)
 
-        # Reindex buckets
-        self.__buckets = self.__list_bucket_filenames()
+        if self.buckets is not None:
+            self.__reindex_buckets()
 
     def describe(self, bucket, descriptor=None):
         # Set descriptor
@@ -166,7 +172,7 @@ class Storage(object):
         else:
             descriptor = self.__descriptors.get(bucket)
             if descriptor is None:
-                file_path = self.__get_safe_file_path(bucket)
+                file_path = self.__get_safe_file_path(bucket, check_exists=True)
                 with savReaderWriter.SavHeaderReader(file_path, ioUtf8=True) as header:
                     descriptor = mappers.spss_header_to_descriptor(header.all())
 
@@ -176,7 +182,7 @@ class Storage(object):
         # Get response
         descriptor = self.describe(bucket)
         schema = tableschema.Schema(descriptor)
-        file_path = self.__get_safe_file_path(bucket)
+        file_path = self.__get_safe_file_path(bucket, check_exists=True)
 
         # Yield rows
         with savReaderWriter.SavReader(file_path, ioUtf8=False, rawMode=False) as reader:
@@ -200,11 +206,7 @@ class Storage(object):
         return list(self.iter(bucket))
 
     def write(self, bucket, rows):
-        file_path = self.__get_safe_file_path(bucket)
-
-        if not os.path.exists(file_path):
-            message = 'File "%s" doesn\'t exist.' % file_path
-            raise RuntimeError(message)
+        file_path = self.__get_safe_file_path(bucket, check_exists=True)
 
         descriptor = self.describe(bucket)
         kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
