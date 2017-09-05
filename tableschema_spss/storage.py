@@ -191,7 +191,7 @@ class Storage(object):
                 for i, field in enumerate(schema.fields):
                     value = r[i]
                     # Fix decimals that should be integers
-                    if field.type == 'integer':
+                    if field.type == 'integer' and value is not None:
                         value = int(float(value))
                     # We need to decode bytes to strings
                     if isinstance(value, six.binary_type):
