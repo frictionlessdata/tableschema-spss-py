@@ -195,7 +195,7 @@ class Storage(object):
                         value = int(float(value))
                     # We need to decode bytes to strings
                     if isinstance(value, six.binary_type):
-                        value = value.decode('utf-8')
+                        value = value.decode(reader.fileEncoding)
                     # Time values need a decimal, add one if missing.
                     if field.type == 'time' and not re.search(r'\.\d*', value):
                             value = '{}.0'.format(value)
