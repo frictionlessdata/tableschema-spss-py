@@ -20,7 +20,7 @@ PACKAGE = 'tableschema_spss'
 NAME = PACKAGE.replace('_', '-')
 INSTALL_REQUIRES = [
     'six>=1.9,<2.0',
-    'tableschema',
+    'tableschema>=1.0,<2.0',
     'savReaderWriter'
 ]
 TESTS_REQUIRE = [
