@@ -102,7 +102,9 @@ COMPOUND = {
 
 # Tests
 
-@pytest.mark.skip('is it possible to pass?')
+# TODO: activate if possible
+# https://github.com/frictionlessdata/tableschema-spss-py/issues/5
+@pytest.mark.skip('not possible for now')
 def test_storage(tmpdir):
 
     # Create storage
