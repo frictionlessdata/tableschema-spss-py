@@ -12,18 +12,179 @@ import pytest
 import logging
 import datetime
 import unittest
+import tableschema
 import savReaderWriter
 from decimal import Decimal
 from tableschema_spss import Storage
 log = logging.getLogger(__name__)
 
 
+# Resources
+
+ARTICLES = {
+    'schema': {
+        'fields': [
+            {'name': 'id', 'type': 'integer', 'constraints': {'required': True}},
+            {'name': 'parent', 'type': 'integer'},
+            {'name': 'name', 'type': 'string'},
+            {'name': 'current', 'type': 'boolean'},
+            {'name': 'rating', 'type': 'number'},
+        ],
+        # 'primaryKey': 'id',
+        # 'foreignKeys': [
+            # {'fields': 'parent', 'reference': {'resource': '', 'fields': 'id'}},
+        # ],
+    },
+    'data': [
+        ['1', '', 'Taxes', 'True', '9.5'],
+        ['2', '1', '中国人', 'False', '7'],
+    ],
+}
+COMMENTS = {
+    'schema': {
+        'fields': [
+            {'name': 'entry_id', 'type': 'integer', 'constraints': {'required': True}},
+            {'name': 'comment', 'type': 'string'},
+            {'name': 'note', 'type': 'any'},
+        ],
+        # 'primaryKey': 'entry_id',
+        # 'foreignKeys': [
+            # {'fields': 'entry_id', 'reference': {'resource': 'articles', 'fields': 'id'}},
+        # ],
+    },
+    'data': [
+        ['1', 'good', 'note1'],
+        ['2', 'bad', 'note2'],
+    ],
+}
+TEMPORAL = {
+    'schema': {
+        'fields': [
+            {'name': 'date', 'type': 'date'},
+            {'name': 'date_year', 'type': 'date', 'format': '%Y'},
+            {'name': 'datetime', 'type': 'datetime'},
+            {'name': 'duration', 'type': 'duration'},
+            {'name': 'time', 'type': 'time'},
+            {'name': 'year', 'type': 'year'},
+            {'name': 'yearmonth', 'type': 'yearmonth'},
+        ],
+    },
+    'data': [
+        ['2015-01-01', '2015', '2015-01-01T03:00:00Z', 'P1Y1M', '03:00:00', '2015', '2015-01'],
+        ['2015-12-31', '2015', '2015-12-31T15:45:33Z', 'P2Y2M', '15:45:33', '2015', '2015-01'],
+    ],
+}
+LOCATION = {
+    'schema': {
+        'fields': [
+            {'name': 'location', 'type': 'geojson'},
+            {'name': 'geopoint', 'type': 'geopoint'},
+        ],
+    },
+    'data': [
+        ['{"type": "Point","coordinates":[33.33,33.33]}', '30,75'],
+        ['{"type": "Point","coordinates":[50.00,50.00]}', '90,45'],
+    ],
+}
+COMPOUND = {
+    'schema': {
+        'fields': [
+            {'name': 'stats', 'type': 'object'},
+            {'name': 'persons', 'type': 'array'},
+        ],
+    },
+    'data': [
+        ['{"chars":560}', '["Mike", "John"]'],
+        ['{"chars":970}', '["Paul", "Alex"]'],
+    ],
+}
+
+
 # Tests
 
+@pytest.mark.skip('is it possible to pass?')
+def test_storage(tmpdir):
 
-def test_storage_repr():
+    # Create storage
+    storage = Storage(base_path=str(tmpdir))
 
-    assert repr(Storage(base_path='data')) == 'Storage <data>'
+    # Delete buckets
+    storage.delete()
+
+    # Create buckets
+    storage.create(['articles', 'comments'], [ARTICLES['schema'], COMMENTS['schema']])
+    storage.create('comments', COMMENTS['schema'], force=True)
+    storage.create('temporal', TEMPORAL['schema'])
+    storage.create('location', LOCATION['schema'])
+    storage.create('compound', COMPOUND['schema'])
+
+    # Write data
+    storage.write('articles', ARTICLES['data'])
+    storage.write('comments', COMMENTS['data'])
+    storage.write('temporal', TEMPORAL['data'])
+    storage.write('location', LOCATION['data'])
+    storage.write('compound', COMPOUND['data'])
+
+    # Create new storage to use reflection only
+    storage = Storage(base_path=str(tmpdir))
+
+    # Create existent bucket
+    with pytest.raises(tableschema.exceptions.StorageError):
+        storage.create('articles.sav', ARTICLES['schema'])
+
+    # Assert buckets
+    assert storage.buckets == ['articles', 'compound', 'location', 'temporal', 'comments']
+
+    # Assert schemas
+    assert storage.describe('articles') == ARTICLES['schema']
+    assert storage.describe('comments') == {
+        'fields': [
+            {'name': 'entry_id', 'type': 'integer', 'constraints': {'required': True}},
+            {'name': 'comment', 'type': 'string'},
+            {'name': 'note', 'type': 'string'}, # type downgrade
+        ],
+    }
+    assert storage.describe('temporal') == {
+        'fields': [
+            {'name': 'date', 'type': 'date'},
+            {'name': 'date_year', 'type': 'date'}, # format removal
+            {'name': 'datetime', 'type': 'datetime'},
+            {'name': 'duration', 'type': 'string'}, # type fallback
+            {'name': 'time', 'type': 'time'},
+            {'name': 'year', 'type': 'integer'}, # type downgrade
+            {'name': 'yearmonth', 'type': 'string'}, # type fallback
+        ],
+    }
+    assert storage.describe('location') == {
+        'fields': [
+            {'name': 'location', 'type': 'object'}, # type downgrade
+            {'name': 'geopoint', 'type': 'string'}, # type fallback
+        ],
+    }
+    assert storage.describe('compound') == {
+        'fields': [
+            {'name': 'stats', 'type': 'object'},
+            {'name': 'persons', 'type': 'string'}, # type fallback
+        ],
+    }
+
+    # Assert data
+    assert storage.read('articles') == cast(ARTICLES)['data']
+    assert storage.read('comments') == cast(COMMENTS)['data']
+    assert storage.read('temporal') == cast(TEMPORAL, skip=['duration', 'yearmonth'])['data']
+    assert storage.read('location') == cast(LOCATION, skip=['geopoint'])['data']
+    assert storage.read('compound') == cast(COMPOUND, skip=['array'])['data']
+
+    # Assert data with forced schema
+    storage.describe('compound.sav', COMPOUND['schema'])
+    assert storage.read('compound.sav') == cast(COMPOUND)['data']
+
+    # Delete non existent bucket
+    with pytest.raises(tableschema.exceptions.StorageError):
+        storage.delete('non_existent')
+
+    # Delete buckets
+    storage.delete()
 
 
 class BaseTestClass(unittest.TestCase):
@@ -64,12 +225,12 @@ class TestBasePath(unittest.TestCase):
 
     def test_base_path_not_exists(self):
         '''base_path arg must exist.'''
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             Storage(base_path='not_here')
 
     def test_base_path_must_not_be_file(self):
         '''base_path arg must be a directory.'''
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             Storage(base_path='data/simple.json')
 
     def test_base_path_no_path_defined(self):
@@ -115,7 +276,7 @@ class TestStorageCreate(BaseTestClass):
         storage = Storage(base_path=self.TEST_BASE_PATH)
 
         storage.create(self.TEST_FILE_NAME, simple_descriptor)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create(self.TEST_FILE_NAME, simple_descriptor)
 
     def test_storage_create_protect_existing_no_base_path(self):
@@ -126,7 +287,7 @@ class TestStorageCreate(BaseTestClass):
         storage = Storage()
 
         storage.create(self.TEST_FILE_PATH, simple_descriptor)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create(self.TEST_FILE_PATH, simple_descriptor)
 
     def test_storage_create_force_overwrite(self):
@@ -228,7 +389,7 @@ class TestStorageWrite(BaseTestClass):
         rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
                  datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
         # try to write to it
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.write(self.TEST_FILE_NAME, rows)
 
     def test_write_file_doesnot_exist_no_base_path(self):
@@ -247,7 +408,7 @@ class TestStorageWrite(BaseTestClass):
         rows = [[1, 'fred', Decimal('57000'), datetime.date(1952, 2, 3),
                  datetime.datetime(2010, 8, 11, 0, 0, 0), datetime.time(0, 0)]]
         # try to write to it
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.write(self.TEST_FILE_PATH, rows)
 
 
@@ -274,7 +435,7 @@ class TestStorageDescribe(BaseTestClass):
         '''Attempting to describe an invalid file raises exception.'''
         storage = Storage()
         # pass file path
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.describe('data/no-file-here.sav')
 
 
@@ -330,7 +491,7 @@ class TestStorageIter_Read(BaseTestClass):
 
     def test_read_no_base_path_invalid(self):
         storage = Storage()
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.read('data/no-file-here.sav')
 
 
@@ -404,7 +565,7 @@ class TestStorageDelete(BaseTestClass):
         # File is removed externally
         os.remove(self.TEST_FILE_PATH)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.delete('delme.sav')
 
     def test_delete_bucket_doesnot_exist(self):
@@ -417,7 +578,7 @@ class TestStorageDelete(BaseTestClass):
         # File is removed externally
         os.remove(self.TEST_FILE_PATH)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.delete('no-file-here.sav')
 
     def test_delete_file_doesnot_exist_no_base_path(self):
@@ -430,7 +591,7 @@ class TestStorageDelete(BaseTestClass):
         # File is removed externally
         os.remove(self.TEST_FILE_PATH)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.delete(self.TEST_FILE_PATH)
 
     def test_delete_file_doesnot_exist_ignore(self):
@@ -449,7 +610,7 @@ class TestStorageDelete(BaseTestClass):
         # Delete and ignore missing
         try:
             storage.delete('delme.sav', ignore=True)
-        except(RuntimeError):
+        except(tableschema.exceptions.StorageError):
             self.fail('delete() shouldn\'t raise exception')
 
         self.assertEqual(storage.buckets, [])
@@ -470,7 +631,7 @@ class TestStorageDelete(BaseTestClass):
         # Delete and ignore missing
         try:
             storage.delete(self.TEST_FILE_PATH, ignore=True)
-        except(RuntimeError):
+        except(tableschema.exceptions.StorageError):
             self.fail('delete() shouldn\'t raise exception')
 
         self.assertEqual(storage.buckets, None)
@@ -503,19 +664,31 @@ class TestSafeFilePath(BaseTestClass):
         try:
             storage.create('delme.sav', self.SIMPLE_DESCRIPTOR)
             storage.create('delme_too', self.SIMPLE_DESCRIPTOR)
-        except RuntimeError:
+        except tableschema.exceptions.StorageError:
             self.fail('Creating with a valid bucket name shouldn\'t fail')
 
     def test_invalid_bucket_name(self):
         storage = Storage(base_path=self.TEST_BASE_PATH)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create('../delme.sav', self.SIMPLE_DESCRIPTOR)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create('/delme.sav', self.SIMPLE_DESCRIPTOR)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create('/delme', self.SIMPLE_DESCRIPTOR)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             storage.create('../../delme', self.SIMPLE_DESCRIPTOR)
+
+
+# Helpers
+
+def cast(resource, skip=[]):
+    resource = deepcopy(resource)
+    schema = tableschema.Schema(resource['schema'])
+    for row in resource['data']:
+        for index, field in enumerate(schema.fields):
+            if field.type not in skip:
+                row[index] = field.cast_value(row[index])
+    return resource

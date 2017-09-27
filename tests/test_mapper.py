@@ -1,6 +1,7 @@
 import io
 import json
 import unittest
+import tableschema
 from tableschema_spss.mapper import Mapper
 
 
@@ -68,7 +69,7 @@ class TestMapperConvertDescriptor(unittest.TestCase):
             if f['name'] == 'name':
                 del f['spss:format']
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(tableschema.exceptions.StorageError):
             mapper.convert_descriptor(simple_descriptor)
 
 

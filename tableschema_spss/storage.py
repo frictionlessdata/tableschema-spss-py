@@ -27,7 +27,7 @@ class Storage(object):
         self.__mapper = Mapper()
         if base_path is not None and not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
-            raise RuntimeError(message)
+            raise tableschema.exceptions.StorageError(message)
         self.__base_path = base_path
         # List all .sav and .zsav files at __base_path
         if base_path:
@@ -63,7 +63,7 @@ class Storage(object):
                 if bucket in buckets:
                     if not force:
                         message = 'Bucket "%s" already exists.' % bucket
-                        raise RuntimeError(message)
+                        raise tableschema.exceptions.StorageError(message)
                     self.delete(bucket)
 
         # Define buckets
@@ -78,7 +78,7 @@ class Storage(object):
 
             if not force and os.path.exists(file_path):
                 message = 'File "%s" already exists.' % file_path
-                raise RuntimeError(message)
+                raise tableschema.exceptions.StorageError(message)
 
             # map descriptor to sav header format so we can use the method below.
             kwargs = self.__mapper.convert_descriptor(descriptor)
@@ -105,7 +105,7 @@ class Storage(object):
             if self.buckets is not None and bucket not in self.buckets:
                 if not ignore:
                     message = 'Bucket "%s" doesn\'t exist.' % bucket
-                    raise RuntimeError(message)
+                    raise tableschema.exceptions.StorageError(message)
 
             # Remove corresponding descriptor
             if bucket in self.__descriptors:
@@ -116,7 +116,7 @@ class Storage(object):
                 os.remove(file_path)
             elif not ignore:
                 message = 'File "%s" doesn\'t exist.' % file_path
-                raise RuntimeError(message)
+                raise tableschema.exceptions.StorageError(message)
 
         if self.buckets is not None:
             self.__reindex_buckets()
@@ -222,12 +222,14 @@ class Storage(object):
             file_path = os.path.join(self.__base_path, filename)
             norm_file_path = os.path.normpath(file_path)
             if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
-                raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
+                message = 'Bucket name "{}" is not valid.'.format(bucket)
+                raise tableschema.exceptions.StorageError(message)
         else:
             norm_file_path = bucket
 
         if check_exists and not os.path.isfile(norm_file_path):
             # bucket isn't a valid file path, bail
-            raise RuntimeError('File "{}" does not exist.'.format(norm_file_path))
+            message = 'File "{}" does not exist.'.format(norm_file_path)
+            raise tableschema.exceptions.StorageError(message)
 
         return norm_file_path

@@ -66,7 +66,8 @@ class Mapper(object):
                 if descriptor_type == 'integer' or descriptor_type == 'number':
                     return 0
 
-            raise ValueError('Field "{}" requires a "spss:format" property.'.format(name))
+            message = 'Field "{}" requires a "spss:format" property.'.format(name)
+            raise tableschema.exceptions.StorageError(message)
 
         var_names = [f['name'] for f in descriptor['fields']]
         var_types = {n: get_spss_type_for_name(n) for n in var_names}
