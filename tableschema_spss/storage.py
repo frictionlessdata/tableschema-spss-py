@@ -10,7 +10,7 @@ import six
 import datetime
 import tableschema
 import savReaderWriter
-from . import mappers
+from .mapper import Mapper
 
 
 # Module API
@@ -24,6 +24,7 @@ class Storage(object):
         """
         self.__descriptors = {}
         self.__buckets = None
+        self.__mapper = Mapper()
         if base_path is not None and not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
             raise RuntimeError(message)
@@ -80,7 +81,7 @@ class Storage(object):
                 raise RuntimeError(message)
 
             # map descriptor to sav header format so we can use the method below.
-            kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+            kwargs = self.__mapper.convert_descriptor(descriptor)
             writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **kwargs)
             writer.close()
 
@@ -134,7 +135,7 @@ class Storage(object):
             if descriptor is None:
                 file_path = self.__get_safe_file_path(bucket, check_exists=True)
                 with savReaderWriter.SavHeaderReader(file_path, ioUtf8=True) as header:
-                    descriptor = mappers.spss_header_to_descriptor(header.all())
+                    descriptor = self.__mapper.restore_descriptor(header.all())
 
         return descriptor
 
@@ -176,7 +177,7 @@ class Storage(object):
         file_path = self.__get_safe_file_path(bucket, check_exists=True)
 
         descriptor = self.describe(bucket)
-        kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+        kwargs = self.__mapper.convert_descriptor(descriptor)
 
         schema = tableschema.Schema(descriptor)
 
@@ -188,14 +189,16 @@ class Storage(object):
                     value = r[i]
                     if field.type == 'date' and isinstance(value, datetime.date):
                         value = writer.spssDateTime(
-                            value.strftime(mappers.DATE_FORMAT).encode(), mappers.DATE_FORMAT)
-                    elif field.type == 'datetime' and isinstance(value,
-                                                                 datetime.datetime):
+                            value.strftime(self.__mapper.DATE_FORMAT).encode(),
+                            self.__mapper.DATE_FORMAT)
+                    elif field.type == 'datetime' and isinstance(value, datetime.datetime):
                         value = writer.spssDateTime(
-                            value.strftime(mappers.DATETIME_FORMAT).encode(), mappers.DATETIME_FORMAT)
+                            value.strftime(self.__mapper.DATETIME_FORMAT).encode(),
+                            self.__mapper.DATETIME_FORMAT)
                     elif field.type == 'time' and isinstance(value, datetime.time):
                         value = writer.spssDateTime(
-                            value.strftime(mappers.TIME_FORMAT).encode(), mappers.TIME_FORMAT)
+                            value.strftime(self.__mapper.TIME_FORMAT).encode(),
+                            self.__mapper.TIME_FORMAT)
                     row.append(value)
                 writer.writerow(row)
 
@@ -215,7 +218,7 @@ class Storage(object):
 
         if self.__base_path:
             # base_path exists, so `bucket` is relative to base_path
-            filename = mappers.bucket_to_filename(bucket)
+            filename = self.__mapper.convert_bucket(bucket)
             file_path = os.path.join(self.__base_path, filename)
             norm_file_path = os.path.normpath(file_path)
             if not norm_file_path.startswith(os.path.normpath(self.__base_path)):

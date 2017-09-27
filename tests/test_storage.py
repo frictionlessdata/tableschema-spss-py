@@ -4,20 +4,20 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import datetime
-import unittest
 import os
 import io
-import json
-from decimal import Decimal
-
-import savReaderWriter
 import six
-
-from tableschema_spss import Storage
-
+import json
 import logging
+import datetime
+import unittest
+import savReaderWriter
+from decimal import Decimal
+from tableschema_spss import Storage
 log = logging.getLogger(__name__)
+
+
+# Tests
 
 
 def test_storage_repr():
