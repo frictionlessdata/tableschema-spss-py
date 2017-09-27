@@ -480,7 +480,7 @@ class TestStorageDelete(BaseTestClass):
 
         expected_buckets = ['delme.sav', 'delme_also.sav', 'delme_too.sav']
 
-        self.assertEqual(os.listdir(self.TEST_BASE_PATH), expected_buckets)
+        self.assertEqual(sorted(os.listdir(self.TEST_BASE_PATH)), expected_buckets)
         self.assertEqual(storage.buckets, expected_buckets)
 
         # no specified bucket, delete everything!

@@ -205,7 +205,7 @@ class Storage(object):
     # Private
 
     def __reindex_buckets(self):
-        self.__buckets = self.__list_bucket_filenames()
+        self.__buckets = sorted(self.__list_bucket_filenames())
 
     def __list_bucket_filenames(self):
         """Find .sav files at base_path and return bucket filenames
