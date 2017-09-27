@@ -21,7 +21,7 @@ NAME = PACKAGE.replace('_', '-')
 INSTALL_REQUIRES = [
     'six>=1.9,<2.0',
     'tableschema>=1.0,<2.0',
-    'savReaderWriter'
+    'savReaderWriter>=3.0,<4.0'
 ]
 TESTS_REQUIRE = [
     'pylama',
