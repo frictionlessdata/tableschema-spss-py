@@ -47,6 +47,12 @@ This driver provides an additional API:
 
 - `base_path (str)` - a valid directory path where .sav files can be created and read. If no base_path is provided, the Storage object methods will accept file paths rather than bucket names.
 
+#### `storage.buckets`
+
+List all .sav and .zsav files at base path. Bucket list is only maintained if Storage has a valid base path, otherwise will return None.
+
+- `(str[]/None)` - returns bucket list or None
+
 #### With a base path
 
 We can get storage with a specified base path this way:
