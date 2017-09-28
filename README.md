@@ -13,9 +13,9 @@ Generate and load SPSS files based on [Table Schema](http://specs.frictionlessda
 
 ## Getting Started
 
-The package use semantic versioning. It means that major versions  could include breaking changes. It's highly recommended to specify `package` version range in your `setup/requirements` file e.g. `package>=1.0,<2.0`.
-
 ### Installation
+
+The package use semantic versioning. It means that major versions  could include breaking changes. It's highly recommended to specify `package` version range in your `setup/requirements` file e.g. `package>=1.0,<2.0`.
 
 ```bash
 pip install tableschema-spss
