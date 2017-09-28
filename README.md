@@ -35,6 +35,8 @@ table = Table('data.csv', schema='schema.json')
 table.save('data', storage='spss', base_path='dir/path')
 ```
 
+## Documentation
+
 ### Storage
 
 Package implements [Tabular Storage](https://github.com/frictionlessdata/tableschema-py#storage) interface (see full documentation on the link):
