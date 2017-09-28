@@ -25,12 +25,12 @@ pip install tableschema-spss
 
 Code examples in this readme requires Python 3.3+ interpreter. You could see even more example in [examples](https://github.com/frictionlessdata/tableschema-spss-py/tree/master/examples) directory.
 
+> For this example your schema should be compatible with SPSS storage - https://github.com/frictionlessdata/tableschema-spss-py#creating-sav-files
+
 ```python
 from tableschema import Table
-from sqlalchemy import create_engine
 
-# Load and save table to SQL
-engine = create_engine('sqlite://')
+# Load and save table to SPSS
 table = Table('data.csv', schema='schema.json')
 table.save('data', storage='spss', base_path='dir/path')
 ```
