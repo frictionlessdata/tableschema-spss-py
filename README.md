@@ -3,23 +3,59 @@
 [![Travis](https://img.shields.io/travis/frictionlessdata/tableschema-spss-py/master.svg)](https://travis-ci.org/frictionlessdata/tableschema-spss-py)
 [![Coveralls](http://img.shields.io/coveralls/frictionlessdata/tableschema-spss-py/master.svg)](https://coveralls.io/r/frictionlessdata/tableschema-spss-py?branch=master)
 [![PyPi](https://img.shields.io/pypi/v/tableschema-spss.svg)](https://pypi.python.org/pypi/tableschema-spss)
-[![SemVer](https://img.shields.io/badge/versions-SemVer-brightgreen.svg)](http://semver.org/)
 [![Gitter](https://img.shields.io/gitter/room/frictionlessdata/chat.svg)](https://gitter.im/frictionlessdata/chat)
 
-Read and write between SPSS and Table Schema.
+Generate and load SPSS files based on [Table Schema](http://specs.frictionlessdata.io/table-schema/) descriptors.
 
+## Features
+
+- implements `tableschema.Storage` interface
 
 ## Getting Started
 
 ### Installation
 
+The package use semantic versioning. It means that major versions  could include breaking changes. It's highly recommended to specify `package` version range in your `setup/requirements` file e.g. `package>=1.0,<2.0`.
+
 ```bash
 pip install tableschema-spss
 ```
 
+### Examples
+
+Code examples in this readme requires Python 3.3+ interpreter. You could see even more example in [examples](https://github.com/frictionlessdata/tableschema-spss-py/tree/master/examples) directory.
+
+> For this example your schema should be compatible with SPSS storage - https://github.com/frictionlessdata/tableschema-spss-py#creating-sav-files
+
+```python
+from tableschema import Table
+
+# Load and save table to SPSS
+table = Table('data.csv', schema='schema.json')
+table.save('data', storage='spss', base_path='dir/path')
+```
+
+## Documentation
+
+The whole public API of this package is described here and follows semantic versioning rules. Everyting outside of this readme are private API and could be changed without any notification on any new version.
+
 ### Storage
 
-Package implements the [Tabular Storage](https://github.com/frictionlessdata/tableschema-py#storage) interface.
+Package implements [Tabular Storage](https://github.com/frictionlessdata/tableschema-py#storage) interface (see full documentation on the link):
+
+![Storage](https://i.imgur.com/RQgrxqp.png)
+
+This driver provides an additional API:
+
+#### `Storage(base_path=None)`
+
+- `base_path (str)` - a valid directory path where .sav files can be created and read. If no base_path is provided, the Storage object methods will accept file paths rather than bucket names.
+
+#### `storage.buckets`
+
+List all .sav and .zsav files at base path. Bucket list is only maintained if Storage has a valid base path, otherwise will return None.
+
+- `(str[]/None)` - returns bucket list or None
 
 #### With a base path
 
@@ -113,3 +149,51 @@ Table Schema descriptors passed to `storage.create()` should include a custom `s
     ]
 }
 ```
+
+## Contributing
+
+The project follows the [Open Knowledge International coding standards](https://github.com/okfn/coding-standards).
+
+Recommended way to get started is to create and activate a project virtual environment.
+To install package and development dependencies into active environment:
+
+```
+$ make install
+```
+
+To run tests with linting and coverage:
+
+```bash
+$ make test
+```
+
+For linting `pylama` configured in `pylama.ini` is used. On this stage it's already
+installed into your environment and could be used separately with more fine-grained control
+as described in documentation - https://pylama.readthedocs.io/en/latest/.
+
+For example to sort results by error type:
+
+```bash
+$ pylama --sort <path>
+```
+
+For testing `tox` configured in `tox.ini` is used.
+It's already installed into your environment and could be used separately with more fine-grained control as described in documentation - https://testrun.org/tox/latest/.
+
+For example to check subset of tests against Python 2 environment with increased verbosity.
+All positional arguments and options after `--` will be passed to `py.test`:
+
+```bash
+tox -e py27 -- -v tests/<path>
+```
+
+Under the hood `tox` uses `pytest` configured in `pytest.ini`, `coverage`
+and `mock` packages. This packages are available only in tox envionments.
+
+## Changelog
+
+Here described only breaking and the most important changes. The full changelog and documentation for all released versions could be found in nicely formatted [commit history](https://github.com/frictionlessdata/tableschema-spss-py/commits/master).
+
+### v0.x
+
+Initial driver implementation.

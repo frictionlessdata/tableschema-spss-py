@@ -6,96 +6,49 @@ from __future__ import unicode_literals
 
 import os
 import re
-import datetime
-
 import six
+import datetime
 import tableschema
 import savReaderWriter
-from tableschema_spss.mappers import (
-    DATE_FORMAT,
-    DATETIME_FORMAT,
-    TIME_FORMAT
-)
+from .mapper import Mapper
 
-from . import mappers
 
+# Module API
 
 class Storage(object):
-    '''SPSS Tabular Storage.
 
-    An implementation of `tableschema.Storage`.
-
-    Args: base_path (str): a valid file path where .sav files can be created and read. If
-        no base_path is provided, the Storage object methods will accept file paths rather
-        than bucket names.
-    '''
+    # Public
 
     def __init__(self, base_path=None):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
         self.__descriptors = {}
         self.__buckets = None
+        self.__mapper = Mapper()
         if base_path is not None and not os.path.isdir(base_path):
             message = '"{}" is not a directory, or doesn\'t exist'.format(base_path)
-            raise RuntimeError(message)
+            raise tableschema.exceptions.StorageError(message)
         self.__base_path = base_path
         # List all .sav and .zsav files at __base_path
         if base_path:
             self.__reindex_buckets()
 
     def __repr__(self):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
         return 'Storage <{}>'.format(self.__base_path)
-
-    def __reindex_buckets(self):
-        self.__buckets = self.__list_bucket_filenames()
-
-    def __list_bucket_filenames(self):
-        '''Find .sav files at base_path and return bucket filenames'''
-        return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
-
-    def __get_safe_file_path(self, bucket, check_exists=False):
-        '''Return a file_path to `bucket` that doesn't traverse outside the base
-        directory.'''
-
-        if self.__base_path:
-            # base_path exists, so `bucket` is relative to base_path
-            filename = mappers.bucket_to_filename(bucket)
-            file_path = os.path.join(self.__base_path, filename)
-            norm_file_path = os.path.normpath(file_path)
-            if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
-                raise RuntimeError('Bucket name "{}" is not valid.'.format(bucket))
-        else:
-            norm_file_path = bucket
-
-        if check_exists and not os.path.isfile(norm_file_path):
-            # bucket isn't a valid file path, bail
-            raise RuntimeError('File "{}" does not exist.'.format(norm_file_path))
-
-        return norm_file_path
 
     @property
     def buckets(self):
-        '''List all .sav and .zsav files at __base_path.
-
-        Bucket list is only maintained if Storage has a valid base_path, otherwise will
-        return None.'''
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
         return self.__buckets
 
     def create(self, bucket, descriptor, force=False):
-        '''Create bucket with descriptor.
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
 
-        Parameters
-        ----------
-        bucket: str/list
-            File name or list of file names.
-        descriptor: dict/list
-            TableSchema descriptor or list of descriptors.
-        force: bool
-            Will force creation of a new file, overwriting existing file with same name.
-
-        Raises
-        ------
-        RuntimeError
-            If file already exists.
-        '''
+        # Make lists
         buckets = bucket
         if isinstance(bucket, six.string_types):
             buckets = [bucket]
@@ -110,11 +63,12 @@ class Storage(object):
                 if bucket in buckets:
                     if not force:
                         message = 'Bucket "%s" already exists.' % bucket
-                        raise RuntimeError(message)
+                        raise tableschema.exceptions.StorageError(message)
                     self.delete(bucket)
 
         # Define buckets
         for bucket, descriptor in zip(buckets, descriptors):
+
             # Add to schemas
             self.__descriptors[bucket] = descriptor
 
@@ -124,10 +78,10 @@ class Storage(object):
 
             if not force and os.path.exists(file_path):
                 message = 'File "%s" already exists.' % file_path
-                raise RuntimeError(message)
+                raise tableschema.exceptions.StorageError(message)
 
             # map descriptor to sav header format so we can use the method below.
-            kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+            kwargs = self.__mapper.convert_descriptor(descriptor)
             writer = savReaderWriter.SavWriter(file_path, ioUtf8=True, **kwargs)
             writer.close()
 
@@ -135,6 +89,10 @@ class Storage(object):
             self.__reindex_buckets()
 
     def delete(self, bucket=None, ignore=False):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
+
+        # Make lists
         buckets = bucket
         if isinstance(bucket, six.string_types):
             buckets = [bucket]
@@ -147,7 +105,7 @@ class Storage(object):
             if self.buckets is not None and bucket not in self.buckets:
                 if not ignore:
                     message = 'Bucket "%s" doesn\'t exist.' % bucket
-                    raise RuntimeError(message)
+                    raise tableschema.exceptions.StorageError(message)
 
             # Remove corresponding descriptor
             if bucket in self.__descriptors:
@@ -158,12 +116,15 @@ class Storage(object):
                 os.remove(file_path)
             elif not ignore:
                 message = 'File "%s" doesn\'t exist.' % file_path
-                raise RuntimeError(message)
+                raise tableschema.exceptions.StorageError(message)
 
         if self.buckets is not None:
             self.__reindex_buckets()
 
     def describe(self, bucket, descriptor=None):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
+
         # Set descriptor
         if descriptor is not None:
             self.__descriptors[bucket] = descriptor
@@ -174,12 +135,15 @@ class Storage(object):
             if descriptor is None:
                 file_path = self.__get_safe_file_path(bucket, check_exists=True)
                 with savReaderWriter.SavHeaderReader(file_path, ioUtf8=True) as header:
-                    descriptor = mappers.spss_header_to_descriptor(header.all())
+                    descriptor = self.__mapper.restore_descriptor(header.all())
 
         return descriptor
 
     def iter(self, bucket):
-        # Get response
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
+
+        # Prepare
         descriptor = self.describe(bucket)
         schema = tableschema.Schema(descriptor)
         file_path = self.__get_safe_file_path(bucket, check_exists=True)
@@ -203,13 +167,17 @@ class Storage(object):
                 yield schema.cast_row(row)
 
     def read(self, bucket):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
         return list(self.iter(bucket))
 
     def write(self, bucket, rows):
+        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """
         file_path = self.__get_safe_file_path(bucket, check_exists=True)
 
         descriptor = self.describe(bucket)
-        kwargs = mappers.descriptor_to_savreaderwriter_args(descriptor)
+        kwargs = self.__mapper.convert_descriptor(descriptor)
 
         schema = tableschema.Schema(descriptor)
 
@@ -221,13 +189,47 @@ class Storage(object):
                     value = r[i]
                     if field.type == 'date' and isinstance(value, datetime.date):
                         value = writer.spssDateTime(
-                            value.strftime(DATE_FORMAT).encode(), DATE_FORMAT)
-                    elif field.type == 'datetime' and isinstance(value,
-                                                                 datetime.datetime):
+                            value.strftime(self.__mapper.DATE_FORMAT).encode(),
+                            self.__mapper.DATE_FORMAT)
+                    elif field.type == 'datetime' and isinstance(value, datetime.datetime):
                         value = writer.spssDateTime(
-                            value.strftime(DATETIME_FORMAT).encode(), DATETIME_FORMAT)
+                            value.strftime(self.__mapper.DATETIME_FORMAT).encode(),
+                            self.__mapper.DATETIME_FORMAT)
                     elif field.type == 'time' and isinstance(value, datetime.time):
                         value = writer.spssDateTime(
-                            value.strftime(TIME_FORMAT).encode(), TIME_FORMAT)
+                            value.strftime(self.__mapper.TIME_FORMAT).encode(),
+                            self.__mapper.TIME_FORMAT)
                     row.append(value)
                 writer.writerow(row)
+
+    # Private
+
+    def __reindex_buckets(self):
+        self.__buckets = sorted(self.__list_bucket_filenames())
+
+    def __list_bucket_filenames(self):
+        """Find .sav files at base_path and return bucket filenames
+        """
+        return [f for f in os.listdir(self.__base_path) if f.endswith(('.sav', '.zsav'))]
+
+    def __get_safe_file_path(self, bucket, check_exists=False):
+        """Return a file_path to `bucket` that doesn't traverse outside the base directory
+        """
+
+        if self.__base_path:
+            # base_path exists, so `bucket` is relative to base_path
+            filename = self.__mapper.convert_bucket(bucket)
+            file_path = os.path.join(self.__base_path, filename)
+            norm_file_path = os.path.normpath(file_path)
+            if not norm_file_path.startswith(os.path.normpath(self.__base_path)):
+                message = 'Bucket name "{}" is not valid.'.format(bucket)
+                raise tableschema.exceptions.StorageError(message)
+        else:
+            norm_file_path = bucket
+
+        if check_exists and not os.path.isfile(norm_file_path):
+            # bucket isn't a valid file path, bail
+            message = 'File "{}" does not exist.'.format(norm_file_path)
+            raise tableschema.exceptions.StorageError(message)
+
+        return norm_file_path
