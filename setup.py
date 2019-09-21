@@ -24,9 +24,10 @@ INSTALL_REQUIRES = [
     'savReaderWriter>=3.0'
 ]
 TESTS_REQUIRE = [
+    'mock',
     'pylama',
     'pytest',
-    'mock',
+    'pytest-cov',
     'tox',
 ]
 README = read('README.md')
