@@ -53,8 +53,8 @@ class Mapper(object):
             '''
             spss_format = get_format_for_name(name)
             if spss_format:
-                string_pattern = re.compile("(?P<printFormat>A(HEX)?)(?P<printWid>\d+)",
-                                            re.IGNORECASE)
+                string_pattern = re.compile(
+                    r'(?P<printFormat>A(HEX)?)(?P<printWid>\d+)', re.IGNORECASE)
                 is_string = string_pattern.match(spss_format)
                 if is_string:
                     # Return the 'width' discovered from the passed `format`.
@@ -79,7 +79,6 @@ class Mapper(object):
 
         Return a Schema descriptor from the passed SPSS header.  Includes a custom
         `spss:format` property which defines the SPSS format used for this field type.
-
         """
         fields = []
         for var in header.varNames:

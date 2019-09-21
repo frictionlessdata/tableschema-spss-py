@@ -162,7 +162,7 @@ class Storage(object):
                         value = value.decode(reader.fileEncoding)
                     # Time values need a decimal, add one if missing.
                     if field.type == 'time' and not re.search(r'\.\d*', value):
-                            value = '{}.0'.format(value)
+                        value = '{}.0'.format(value)
                     row.append(value)
                 yield schema.cast_row(row)
 
