@@ -1,4 +1,4 @@
-.PHONY: all install list release test version
+.PHONY: all install list readme release templates test version
 
 
 PACKAGE := $(shell grep '^PACKAGE =' setup.py | cut -d "'" -f2)
