@@ -3,6 +3,7 @@
 
 PACKAGE := $(shell grep '^PACKAGE =' setup.py | cut -d "'" -f2)
 VERSION := $(shell head -n 1 $(PACKAGE)/VERSION)
+MAINTAINER := $(shell head -n 1 MAINTAINER.md)
 
 
 all: list
@@ -25,6 +26,10 @@ release:
 	git commit -a -m 'v$(VERSION)'
 	git tag -a v$(VERSION) -m 'v$(VERSION)'
 	git push --follow-tags
+
+templates:
+	sed -i -E "s/@(\w*)/@$(MAINTAINER)/" .github/issue_template.md
+	sed -i -E "s/@(\w*)/@$(MAINTAINER)/" .github/pull_request_template.md
 
 test:
 	pylama $(PACKAGE)
