@@ -29,7 +29,7 @@ after_success:
 
 jobs:
   include:
-    - stage: release
+    - stage: deploy
       python: 3.8
       if: branch == master AND tag IS present
       script: echo "Realising the package..."
