@@ -35,6 +35,7 @@ jobs:
       deploy:
         provider: pypi
         user: brew
+        on: tags
         distributions: sdist bdist_wheel
         skip_cleanup: true
         password:
