@@ -29,13 +29,14 @@ after_success:
 
 jobs:
   include:
-    - stage: deploy
+    - stage: release
       python: 3.8
-      if: branch = master AND tag IS present
-      script: echo "Realising the package..."
+      if: tag IS present
+      script: echo "Releasing the package..."
       deploy:
         provider: pypi
         user: brew
+        on: master
         distributions: sdist bdist_wheel
         skip_cleanup: true
         password:
