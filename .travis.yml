@@ -29,9 +29,9 @@ after_success:
 
 jobs:
   include:
-    - stage: deploy
+    - stage: release
       python: 3.8
-      if: (branch == master) AND (tag IS present)
+      if: branch == master AND tag IS present
       script: echo "Realising the package..."
       deploy:
         provider: pypi
