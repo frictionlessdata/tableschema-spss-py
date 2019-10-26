@@ -30,9 +30,9 @@ after_success:
 jobs:
   include:
     - stage: release
-      python: 3.8
       if: tag IS present
       script: echo "Releasing the package..."
+      python: 3.8
       deploy:
         provider: pypi
         user: brew

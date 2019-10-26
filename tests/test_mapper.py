@@ -18,9 +18,7 @@ class TestMapperConvertDescriptor(unittest.TestCase):
 
     def test_convert_descriptor_simple_descriptor(self):
         '''A simple schema returns expected kwarg dict.'''
-        import six
-        if six.PY3:
-            mapper = Mapper()
+        mapper = Mapper()
         simple_descriptor = json.load(io.open('data/simple.json', encoding='utf-8'))
         kwargs = mapper.convert_descriptor(simple_descriptor)
 
