@@ -16,12 +16,27 @@ from .mapper import Mapper
 # Module API
 
 class Storage(object):
+    """SPSS storage
+
+    Package implements
+    [Tabular Storage](https://github.com/frictionlessdata/tableschema-py#storage)
+    interface (see full documentation on the link):
+
+    ![Storage](https://i.imgur.com/RQgrxqp.png)
+
+    > Only additional API is documented
+
+    # Arguments
+        base_path (str):
+            a valid directory path where .sav files can be created and read.
+            If no base_path is provided, the Storage object methods
+            will accept file paths rather than bucket names.
+
+    """
 
     # Public
 
     def __init__(self, base_path=None):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
         self.__descriptors = {}
         self.__buckets = None
         self.__mapper = Mapper()
@@ -34,19 +49,22 @@ class Storage(object):
             self.__reindex_buckets()
 
     def __repr__(self):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
         return 'Storage <{}>'.format(self.__base_path)
 
     @property
     def buckets(self):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
+        """List all .sav and .zsav files at base path.
+
+        Bucket list is only maintained if Storage has a valid base path,
+        otherwise will return None.
+
+        # Returns
+            str[]/None: returns bucket list or None
+
         """
         return self.__buckets
 
     def create(self, bucket, descriptor, force=False):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
 
         # Make lists
         buckets = bucket
@@ -89,8 +107,6 @@ class Storage(object):
             self.__reindex_buckets()
 
     def delete(self, bucket=None, ignore=False):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
 
         # Make lists
         buckets = bucket
@@ -122,8 +138,6 @@ class Storage(object):
             self.__reindex_buckets()
 
     def describe(self, bucket, descriptor=None):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
 
         # Set descriptor
         if descriptor is not None:
@@ -140,8 +154,6 @@ class Storage(object):
         return descriptor
 
     def iter(self, bucket):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
 
         # Prepare
         descriptor = self.describe(bucket)
@@ -167,13 +179,9 @@ class Storage(object):
                 yield schema.cast_row(row)
 
     def read(self, bucket):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
         return list(self.iter(bucket))
 
     def write(self, bucket, rows):
-        """https://github.com/frictionlessdata/tableschema-spss-py#storage
-        """
         file_path = self.__get_safe_file_path(bucket, check_exists=True)
 
         descriptor = self.describe(bucket)
